@@ -607,7 +607,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 122.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 123.</p>
     </div>
   </section>
 </div>
@@ -742,7 +742,7 @@ function freshState(){
 }
 let S;
 try { S = JSON.parse(localStorage.getItem("gorod.v14")) || freshState(); } catch { S = freshState(); }
-function noBots(){ if(!S) return; if(S.cars) S.cars=S.cars.filter(c=>CAR_BY[c]); if(S.car&&!CAR_BY[S.car]) S.car=null; if(!S.mapV){ S.mapV=2; if(S.pos&&S.pos[1]<40){ const h=BY.baladmin; S.pos=[h.x,h.y]; } } if(!S.gangs.balakh) S.gangs.balakh={inf:20,guns:30,cash:50000,ally:null,boss:null,roles:{}}; CIVIC.filter(c=>c.id.startsWith("school")).forEach(c=>{ if(!S.biz[c.id]) S.biz[c.id]=newPlace(null); }); ALL.forEach(b=>{ if(!S.biz[b.id]) S.biz[b.id]=newPlace(null); }); if(!S.biz.zolton) S.biz.zolton=newPlace(null); Object.values(S.biz).forEach(q=>{ if(q.lvl==null) q.lvl=(q.up||[]).filter(Boolean).length; }); if(S.nextEvent>Date.now()+3600000) S.nextEvent=Date.now()+3600000; Object.values(S.biz||{}).forEach(q=>Object.keys(q.docs||{}).forEach(k=>{ q.docs[k]=Math.min(q.docs[k],Date.now()+DOC_LONG); })); Object.values(S.gangs||{}).forEach(x=>{ if(x.boss!=="you") x.boss=null; x.roles={}; }); const real=m=>m.o==="you"||!BOTS[m.o]&&!/^x\d$/.test(m.o); S.chat=(S.chat||[]).filter(real); S.clubChat=(S.clubChat||[]).filter(real); S.cases=[]; if(S.alert&&S.alert.by!=="state") S.alert=null; }
+function noBots(){ if(!S) return; if(!S.mapV){ S.mapV=2; if(S.pos&&S.pos[1]<40){ const h=BY.baladmin; S.pos=[h.x,h.y]; } } if(!S.gangs.balakh) S.gangs.balakh={inf:20,guns:30,cash:50000,ally:null,boss:null,roles:{}}; CIVIC.filter(c=>c.id.startsWith("school")).forEach(c=>{ if(!S.biz[c.id]) S.biz[c.id]=newPlace(null); }); ALL.forEach(b=>{ if(!S.biz[b.id]) S.biz[b.id]=newPlace(null); }); if(!S.biz.zolton) S.biz.zolton=newPlace(null); Object.values(S.biz).forEach(q=>{ if(q.lvl==null) q.lvl=(q.up||[]).filter(Boolean).length; }); if(S.nextEvent>Date.now()+3600000) S.nextEvent=Date.now()+3600000; Object.values(S.biz||{}).forEach(q=>Object.keys(q.docs||{}).forEach(k=>{ q.docs[k]=Math.min(q.docs[k],Date.now()+DOC_LONG); })); Object.values(S.gangs||{}).forEach(x=>{ if(x.boss!=="you") x.boss=null; x.roles={}; }); const real=m=>m.o==="you"||!BOTS[m.o]&&!/^x\d$/.test(m.o); S.chat=(S.chat||[]).filter(real); S.clubChat=(S.clubChat||[]).filter(real); S.cases=[]; if(S.alert&&S.alert.by!=="state") S.alert=null; }
 noBots();
 function persist(){ S.savedAt=Date.now(); try { localStorage.setItem("gorod.v14", JSON.stringify(S)); } catch {} if(typeof cloud!=="undefined"&&cloud.on&&Date.now()-cloud.lastSave>120000) cloudSave(); }
 
@@ -1981,6 +1981,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["123","6 ноября 2026",["Исправлена ошибка запуска игры."]],
  ["122","6 ноября 2026",["Новые машины пока убраны из автосалона, они ещё готовятся."]],
  ["120","6 ноября 2026",["Банда может отказаться от крыши точки за 25% казны."]],
  ["119","6 ноября 2026",["Хозяин района получает с бизнесов района ещё в 2 раза больше."]],
