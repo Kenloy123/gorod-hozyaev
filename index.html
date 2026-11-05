@@ -607,7 +607,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 114.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 115.</p>
     </div>
   </section>
 </div>
@@ -1980,6 +1980,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["115","6 ноября 2026",["Доход с территории районов сильно увеличен: теперь район приносит заметно больше бизнеса."]],
  ["114","6 ноября 2026",["Приглашённый игрок даёт 10 000 ₽ и +5 влияния банде.","Контрабанда теперь даёт +3 влияния банде.","Боты больше не торгуются за районы: их можно купить по цене города."]],
  ["113","5 ноября 2026",["Помощники могут добавлять и устанавливать деньги игрокам через панель."]],
  ["112","5 ноября 2026",["В бандах появились лимиты: 1 глава, 2 заместителя, 3 казначея и 5 смотрящих.","Если не заходить в игру 3 дня, звание в банде обнуляется. Это не касается заместителей и главы."]],
@@ -2735,7 +2736,7 @@ BIZ.forEach(b=>{ b.base=b.price; if(b.price>START_BIZ_MAX){ b.price*=2; b.inc=Ma
 BIZ.forEach(b=>{ b.tier=b.price<=60000?1:b.price<=300000?2:b.price<=960000?3:b.price<=3300000?4:5; if(b.tier>1){ const t=TIER[b.tier], h=2.2+Math.log(b.price/60000)/Math.log(120)*6.8; b.inc=Math.round(b.price/(h*60)/((.66-t.rent)*(1-t.tax))/10)*10; } });
 noBots();
 pinsToRoads();
-{ const st=DISTRICTS.map(d=>{ const l=bizIn(d); return {d,n:l.length,net:l.reduce((a,b)=>a+bizNet(b),0)}; }), mxN=Math.max(...st.map(x=>x.n)), mxV=Math.max(...st.map(x=>x.net)), mxI=Math.max(...st.map(x=>x.d.inc)), sc=st.map(x=>.3*x.n/mxN+.3*x.net/mxV+.4*x.d.inc/mxI), lo=Math.min(...sc), hi=Math.max(...sc); st.forEach((x,i)=>{ const f=(sc[i]-lo)/(hi-lo), d=x.d; d.oldPrice=d.price; d.price=Math.round((60e6+f*640e6)/1e6/5)*5e6; d.inc=Math.max(d.inc,Math.round(d.price/((70+f*50)*60)/10)*10); }); }
+{ const st=DISTRICTS.map(d=>{ const l=bizIn(d); return {d,n:l.length,net:l.reduce((a,b)=>a+bizNet(b),0)}; }), mxN=Math.max(...st.map(x=>x.n)), mxV=Math.max(...st.map(x=>x.net)), mxI=Math.max(...st.map(x=>x.d.inc)), sc=st.map(x=>.3*x.n/mxN+.3*x.net/mxV+.4*x.d.inc/mxI), lo=Math.min(...sc), hi=Math.max(...sc); st.forEach((x,i)=>{ const f=(sc[i]-lo)/(hi-lo), d=x.d; d.oldPrice=d.price; d.price=Math.round((60e6+f*640e6)/1e6/5)*5e6; d.inc=Math.round(d.price/((8+f*22)*60)/100)*100; }); }
 buildGraph();
 drawAll();
 applyOpts();
