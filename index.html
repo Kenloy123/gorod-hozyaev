@@ -465,6 +465,7 @@ nav button { filter: none; }
 .updList { display: grid; gap: 6px; margin: 8px 0 0; padding-left: 20px; list-style: disc; }
 #updatesView > .btn { width: 100%; margin-bottom: 12px; }
 #closedGate { position: fixed; inset: 0; z-index: 990; display: flex; align-items: center; justify-content: center; background: #0B0E1A; } #closedGate[hidden] { display: none; } #closedGate img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.docBtns { display: grid; gap: 6px; min-width: 132px; } .docBtns .btn { width: 100%; }
 #news { z-index: 860; overflow-y: auto; background: var(--coal, #14151B); }
 .newsWrap { display: grid; gap: 12px; max-width: 460px; margin: 0 auto; padding: 14px 12px calc(14px + env(safe-area-inset-bottom)); }
 .gazette { --ink: #1C1A16; padding: 16px 16px 20px; border-radius: 3px; background: #E8DFCB; color: var(--ink); font-family: Georgia, "Times New Roman", serif; line-height: 1.42; }
@@ -687,7 +688,7 @@ const ROLES = {
 const RANKS = [[0,"Новичок"],[100000,"Делец"],[500000,"Воротила"],[2000000,"Авторитет"],[8000000,"Хозяин района"],[25000000,"Хозяин города"]];
 const ACHIEVE = [["🛵","Первая смена","1 смена",s=>s.shifts>=1],["💪","Работяга","50 смен",s=>s.shifts>=50],["🏪","Свой бизнес","Купи бизнес",s=>s.bought>=1],["🏬","Сеть","Купи 5 объектов",s=>s.bought>=5],["🤝","Рейдер","Выкупи у хозяина",s=>s.takeovers>=1],["🦈","Акула","5 выкупов",s=>s.takeovers>=5],["🏘️","Хозяин района","Купи район",s=>s.districts>=1],["👑","Хозяин села","5 районов",s=>s.districts>=5],["🚓","Звонок другу","5 проверок",s=>s.checksSent>=5],["🎯","Точный удар","5 удачных",s=>s.checksHit>=5],["📁","Чистые бумаги","Пройди проверку",s=>s.checksPassed>=1],["🛡️","Неприкасаемый","5 чистых проверок",s=>s.checksPassed>=5],["📄","Бюрократ","20 документов",s=>s.docs>=20],["🔧","Хозяйственник","5 улучшений",s=>s.upgrades>=5],["🕵️","Связи","3 подкупа",s=>s.bribes>=3],["🧥","Модник","5 вещей",s=>s.clothes>=5],["🚗","За рулём","Купи машину",s=>s.carsBought>=1],["🏎️","Коллекционер","3 машины",s=>s.carsBought>=3],["🎁","Щедрый","Подари машину",s=>s.gifts>=1],["🚕","Таксист","20 рейсов",s=>s.rides>=20],["🧭","Путешественник","50 км",s=>s.km>=50],["💬","Болтун","50 сообщений",s=>s.msgs>=50],["✅","Исполнитель","10 заданий",s=>s.quests>=10],["💰","Миллионер","1 000 000 ₽ оборота",s=>s.turnover>=1000000],["🔫","Рэкетир","Отожми бизнес",s=>s.rackets>=1],["📦","Контрабандист","5 рейсов",s=>s.smug>=5],["🎰","Везунчик","10 побед в казино",s=>s.wins>=10],["💸","Спонсор","5 переводов",s=>s.transfers>=5],["👮","Страж порядка","5 задержаний",s=>s.arrests>=5]];
 const NICKS = ["Седой","Барон","Гвоздь","Лис","Тихий","Кубанский","Шеф","Кочубей","Грач","Туз"];
-const CHECK_WARNING = 20000, OFFER_LIFE = 30000, DOC_LIFE = 600000, DOC_RENEW = 60000, INSPECT_DELAY = 4000, INSPECT_COOLDOWN = 60000, FINE = .12;
+const CHECK_WARNING = 20000, OFFER_LIFE = 30000, DOC_LIFE = 600000, DOC_LONG = 8*3600000, DOC_LONG_K = 5, DOC_RENEW = 60000, INSPECT_DELAY = 4000, INSPECT_COOLDOWN = 60000, FINE = .12;
 
 const $ = id => document.getElementById(id);
 const rnd = (a,b) => a + Math.random()*(b-a);
@@ -1066,9 +1067,9 @@ function liveSheet(){
   const b=BY[openId], s=S.biz[openId], now=Date.now();
   const d=$("docs");
   if(d){
-    if(!d.children.length) d.innerHTML=DOCS.map(([k,n])=>`<div class="row"><div>${n}<br><span id="ds_${k}"></span></div><button class="btn small" data-act="doc" data-doc="${k}" id="db_${k}"></button></div>`).join("");
+    if(!d.children.length) d.innerHTML=DOCS.map(([k,n])=>`<div class="row"><div>${n}<br><span id="ds_${k}"></span></div><div class="carActs docBtns"><button class="btn small" data-act="doc" data-doc="${k}" id="db_${k}"></button><button class="btn small main" data-act="doc8" data-doc="${k}" id="db8_${k}"></button></div></div>`).join("")+`<button class="btn" data-act="docAll8" id="dbAll8"></button>`;
     { const nc=$("nextCheck"); if(nc){ const l=Math.max(0,S.nextEvent-now); nc.textContent=`Следующая плановая проверка через ${l>=60000?Math.ceil(l/60000)+" мин":Math.ceil(l/1000)+" с"}.`; } }
-    DOCS.forEach(([k])=>{ const left=s.docs[k]-now, ok=left>0, a=$("ds_"+k); a.className=ok?"ok":"no"; a.textContent=ok?`В порядке ещё ${left>=60000?Math.ceil(left/60000)+" мин":Math.ceil(left/1000)+" с"}`:"Нет документа"; const bt=$("db_"+k), wait=left>DOC_RENEW; bt.disabled=wait; bt.textContent=wait?"Рано продлевать":`${ok?"Продлить":"Оформить"} ${rub(docCost(b))}`; });
+    DOCS.forEach(([k])=>{ const left=s.docs[k]-now, ok=left>0, a=$("ds_"+k); a.className=ok?"ok":"no"; a.textContent=ok?`В порядке ещё ${left>=3600000?`${Math.floor(left/3600000)} ч ${Math.ceil(left%3600000/60000)} мин`:left>=60000?Math.ceil(left/60000)+" мин":Math.ceil(left/1000)+" с"}`:"Нет документа"; const bt=$("db_"+k), wait=left>DOC_RENEW; bt.disabled=wait; bt.textContent=wait?"Рано продлевать":`10 мин: ${rub(docCost(b))}`; const b8=$("db8_"+k); b8.disabled=wait; b8.textContent=wait?"Рано продлевать":`8 часов: ${rub(docCost(b)*DOC_LONG_K)}`; }); { const all=$("dbAll8"), need=DOCS.filter(([k])=>s.docs[k]-now<=DOC_RENEW); if(all){ all.hidden=need.length<2; all.textContent=`Все на 8 часов: ${rub(need.length*docCost(b)*DOC_LONG_K)}`; } }
   }
   const i=$("inspectBtn");
   if(i){
@@ -1145,6 +1146,11 @@ $("sheet").addEventListener("click", e => {
     S.stats.checksSent++;
     if(Math.random()>=.85){ S.money-=Math.round(fee/2); notify("police","Заявка отклонена",`Полиция не нашла оснований: ${b.name}. Половина оплаты вернулась.`,id); }
     else { S.money-=fee; s.inspectAt=Date.now()+INSPECT_DELAY; drawMap(); notify("police","Заявка одобрена",`Наряд выехал: ${b.name}.`,id); }
+  }
+  if(act==="doc8"||act==="docAll8"){
+    const ks=act==="doc8"?[el.dataset.doc]:DOCS.map(([k])=>k).filter(k=>s.docs[k]-Date.now()<=DOC_RENEW), c=ks.length*docCost(b)*DOC_LONG_K;
+    if(!ks.length) return; if(S.money<c) return toast(`На документы нужно ${rub(c)}.`);
+    S.money-=c; S.stats.docs+=ks.length; ks.forEach(k=>s.docs[k]=Date.now()+DOC_LONG); toast("Документы действуют 8 часов"); liveSheet(); drawHud(); drawAlert(); return;
   }
   if(act==="doc"){
     const c=docCost(b);
@@ -1760,7 +1766,7 @@ const TUT=[
  ["Отработай 3 смены","Так копятся деньги на первый бизнес.",x=>x.shifts>=3,1500,"work"],
  ["Купи первый бизнес","Поезжай к точке и купи её. Она приносит доход каждую минуту.",x=>x.bought>=1,1500,"biz"],
  ["Найми сотрудника","Без персонала выручка почти вдвое меньше.",x=>x.hired>=1,1500,"own"],
- ["Следи за документами","Они действуют 10 минут. Без них на проверке будет штраф.",x=>x.docs>=1||x.bought>=1,1500,"own"],
+ ["Следи за документами","Они действуют 10 минут или 8 часов. Без них на проверке будет штраф.",x=>x.docs>=1||x.bought>=1,1500,"own"],
  ["Дойди до 2 уровня","Опыт дают смены, покупки и найм.",()=>levelOf(S.xp)>=2,2000,"work"]];
 function drawTut(){ const h=$("hint"); if(!h||!S) return; S.tut=S.tut||0;
   while(S.tut<TUT.length&&TUT[S.tut][2](S.stats)){ const t=TUT[S.tut]; S.money+=t[3]; S.tut++; sfx.coin(); notify("money","Задание выполнено",`${t[0]}: +${rub(t[3])}.`); drawHud(); }
@@ -1870,7 +1876,7 @@ const NEWS=[
  ["Соседи больше не прячутся","Видно, кто в городе, а кто нет. В профиле теперь аватарка и Telegram. Вещи продаются напрямую, по ID игрока."],
  ["Новые лица","При создании героя больше причёсок, лиц, бород, улыбок и примет. А лысина на макушке наконец заросла."],
  ["Бот не спит","Важные события придут в сообщения, даже если ты вышел из игры."]];
-const NEWS_ORDER=["Войти в игру можно только после «Старт» в боте.","Документы действуют 10 минут и не складываются.","Плановая проверка приходит каждые 10 минут.","Имя у каждого своё, мат запрещён.","В казино ставка до 25 000 ₽, между ставками 2 секунды.","Заметил неладное? Жми «Сообщить об ошибке»."];
+const NEWS_ORDER=["Войти в игру можно только после «Старт» в боте.","Документы действуют 10 минут или 8 часов и не складываются.","Плановая проверка приходит каждые 10 минут.","Имя у каждого своё, мат запрещён.","В казино ставка до 25 000 ₽, между ставками 2 секунды.","Заметил неладное? Жми «Сообщить об ошибке»."];
 function showNews(){ const b=$("news"); b.innerHTML=`<div class="newsWrap"><div class="gazette"><div class="paperHead"><strong>Вестник Кочубеевского</strong><span><i>Срочный выпуск</i><i>Цена: одна минута</i></span></div><h2>${NEWS_LEAD[0]}</h2><p class="paperLead">${NEWS_LEAD[1]}</p>${NEWS.map(([h,t])=>`<article><h3>${h}</h3><p>${t}</p></article>`).join("")}<div class="paperOrder"><h3>Постановление администрации</h3><ol>${NEWS_ORDER.map(x=>`<li>${x}</li>`).join("")}</ol></div></div><button class="btn main" id="newsOk">В город</button></div>`; b.scrollTop=0; b.hidden=false; }
 const BOT_URL="https://t.me/citymastersgame_bot?start=play";
 async function botGate(byHand){ if(cloud.dev) return; let ok=true; try{ ok=(await api("bot_check")).started!==false; }catch{ ok=true; } const g=$("botGate"); if(ok){ if(!g.hidden) toast("Бот запущен, можно играть"); g.hidden=true; return; } g.hidden=false; $("gateMsg").textContent=byHand?"Бот пока не видит твой «Старт». Нажми его в чате с ботом.":""; }
@@ -1886,7 +1892,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 25% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
- ["71","5 ноября 2026",["Контрабанда доступна всем участникам банды с ранга «Новичок» после 5 минут игры."]],
+ ["71","5 ноября 2026",["Документы можно продлить на 8 часов: в 5 раз дороже, чем на 10 минут.","Контрабанда доступна всем участникам банды с ранга «Новичок» после 5 минут игры."]],
  ["70","5 ноября 2026",["Суммы доната пересчитаны под экономику: от 80 000 ₽ за 9 ⭐ до 6 000 000 ₽ за 499 ⭐.","Доход вне игры: до 8 часов, минус 25% коммуналки.","Заявки и заявления в полиции сразу рассматривает полицейский бот.","Номер можно сдать в ГАИ за 65% госки.","Прокруты номеров подорожали: 10 000, 50 000 и 150 000 ₽ в 26 регионе.","В «Ещё» появилась эта вкладка с историей обновлений.","На время технических работ игра закрывается у всех сразу."]],
  ["69","5 ноября 2026",["15 новых дорогих бизнесов: заводы, торговые центры, клиника, автосалон и другие.","Лимит бизнесов теперь 5.","Цены на районы выросли втрое.","Новая банда: Балахоновские.","Глава банды только один, его назначает разработчик.","Клуб Zolton и школы только через аукцион.","Коммуналка: каждый час игры 25% дохода бизнесов. За 5 предупреждений один бизнес слетает, и об этом сообщает бот."]],
  ["68","5 ноября 2026",["Подготовка к журналу действий: игра записывает покупки, продажи и донат для разработчика."]],
