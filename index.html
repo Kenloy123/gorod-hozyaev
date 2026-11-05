@@ -1944,7 +1944,7 @@ function drawUpdates(){ $("updatesView").innerHTML=`<h2>Что нового</h2>
 $("updatesView").addEventListener("click",e=>{ if(e.target.id==="updPaper") showNews(); });
 async function closeNow(){ if(typeof cloud==="undefined"||cloud.closed) return; try{ await cloudSave(); }catch{} cloud.closed=true; persist(); stopMusic(); $("closedGate").hidden=false; }
 async function reloadNow(){ if(cloud.closed) return; try{ await cloudSave(); }catch{} cloud.closed=true; persist(); stopMusic(); $("reloadGate").hidden=false; }
-$("reloadGo").addEventListener("click",()=>{ location.replace(`./?v=${Date.now()}`); });
+$("reloadGo").addEventListener("click",()=>{ try{ if(Telegram.WebApp.initData) Telegram.WebApp.close(); }catch{} setTimeout(()=>location.reload(),400); });
 function closedCheck(){ fetch(`status.json?t=${Date.now()}`,{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{ if(!d) return; if(cloud.reloadId==null) cloud.reloadId=d.reload||0; else if((d.reload||0)!==cloud.reloadId&&!d.closed){ reloadNow(); return; } if(d.closed) closeNow(); else if(cloud.closed) location.reload(); else if(d.notice&&d.notice.id&&cloud.admin&&cloud.on&&S.player&&S.openNotice!==d.notice.id){ S.openNotice=d.notice.id; persist(); cloudSave(); api("admin_notice",{text:d.notice.text}).then(()=>toast("Рассылка отправлена всем")).catch(er=>{ S.openNotice=""; toast(`Рассылка не ушла (${errText(er)}).`); }); } }).catch(()=>{}); }
 setTimeout(()=>{ closedCheck(); setInterval(closedCheck,30000); },1500);
 const AWAY_MAX=8*3600000, AWAY_MIN=120000;
