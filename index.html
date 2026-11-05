@@ -592,7 +592,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 74.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 75.</p>
     </div>
   </section>
 </div>
@@ -613,6 +613,7 @@ const STREET_XY = {};
 const ORGS = [["Администрация округа","ул. Октябрьской Революции, 64"],["Сельсовет","ул. Октябрьской Революции, 22"],["Районный суд","ул. Братская, 104"],["ЗАГС","ул. Братская, 102"],["Районная поликлиника","ул. Восточная, 63"],["Школа № 2","ул. Гагарина, 83"],["Школа № 4","ул. Вокзальная, 58"],["Ольгинская церковь","ул. Гагарина, 68"],["Автостанция","ул. Вольная, 1А"],["Дом культуры «Луч»","ул. 60 лет Октября, 1"],["Спорткомплекс «Урожай»","ул. Титова, 23"],["Бассейн и детский центр","ул. Титова, 23А"],["Дом детского творчества","ул. Фабричная, 42"],["Супермаркет","ул. Гагарина, 135"],["Торговый центр","ул. Санько, 1А"],["Гостиница","ул. Гагарина, 96А"],["Банкетный зал","ул. Гагарина, 108"],["Пиццерия","ул. Титова, 8Г"],["Аптека","ул. Титова, 40"],["Заправка","ул. Станционная, 3"],["Банк","ул. Гагарина, 123"]];
 const UP_BONUS=[.1,.15,.25], UP_COST=[.15,.3,.5];
 const BIG_PRICES=[["tc_kochu",1500000,26000],["autosalon",1200000,21000],["elevator",2400000,40000],["restaurant",750000,13500],["clinic",1650000,28000],["fitness",600000,11000],["brickworks",3000000,48000],["meatplant",1800000,30500],["autobase",1050000,18500],["bal_agro",2700000,44000],["bal_green",2100000,35000],["bal_dairy",1350000,23000],["bal_hyper",900000,16000],["bal_resort",1200000,21000],["bal_market2",750000,13500]];
+const START_BIZ_MAX=60000, baseOf=b=>b.base||b.price;
 const TYPES={tc_kochu:{"d":"Большой торговый центр в сердце села.","u":["Эскалаторы","Фудкорт","Парковка"],"a":["Распродажа выходного дня","Этажи забиты покупателями."]},autosalon:{"d":"Новые машины и кредит прямо в зале.","u":["Шоурум","Тест-драйв","Сервисный центр"],"a":["Презентация модели","Очередь на тест-драйв."]},elevator:{"d":"Зерно всего района проходит через эти башни.","u":["Новые силосы","Сушилка","Весовая"],"a":["Хлебная неделя","Фуры стоят в очереди."]},restaurant:{"d":"Лучшая кухня и столики для своих.","u":["Банкетный зал","Шеф-повар","Терраса"],"a":["Вечер с живой музыкой","Все столы заняты."]},clinic:{"d":"Анализы, врачи и запись без очереди.","u":["Томограф","Лаборатория","Стационар"],"a":["День открытых дверей","Запись на месяц вперёд."]},fitness:{"d":"Тренажёры, бассейн и абонементы на год.","u":["Бассейн","Сауна","Новые тренажёры"],"a":["Продажа абонементов","Зал переполнен."]},brickworks:{"d":"Весь район строится из этого кирпича.","u":["Новая печь","Автолиния","Склад"],"a":["Крупный заказ","Завод работает в три смены."]},meatplant:{"d":"Колбаса и мясо на весь край.","u":["Холодильные камеры","Коптильня","Цех упаковки"],"a":["Заказ от сети магазинов","Линия работает без остановки."]},autobase:{"d":"Грузовики и междугородние перевозки.","u":["Новые фуры","Ремзона","Диспетчерская"],"a":["Сезон перевозок","Все машины в рейсе."]},bal_agro:{"d":"Поля, техника и урожай всей округи.","u":["Новые комбайны","Хранилище","Лаборатория"],"a":["Уборочная страда","Поля работают день и ночь."]},bal_green:{"d":"Овощи круглый год для всего края.","u":["Новые теплицы","Автополив","Фасовка"],"a":["Контракт с торговой сетью","Ящики не успевают грузить."]},bal_dairy:{"d":"Молоко, сыр и творог из Балахоновки.","u":["Новый цех","Сыроварня","Холодильник"],"a":["Заказ от школ","Цистерны идут одна за другой."]},bal_hyper:{"d":"Всё для дома под одной крышей.","u":["Новые кассы","Склад","Парковка"],"a":["Большая распродажа","Тележек не хватает."]},bal_resort:{"d":"Домики у реки и баня на выходные.","u":["Новые домики","Баня","Причал"],"a":["Сезон отпусков","Мест нет до конца месяца."]},bal_market2:{"d":"Прилавки, фермеры и торговля с утра.","u":["Крытые ряды","Холодильники","Парковка"],"a":["Ярмарка выходного дня","Торговцы занимают места с ночи."]},bal_market:{d:"Продукты и товары для дома.",u:["Холодильники", "Касса", "Склад"],a:["Завоз товара", "Полки опустели."]},bal_cafe:{d:"Домашняя кухня у реки.",u:["Веранда", "Новая плита", "Доставка"],a:["Банкетный вечер", "Все столики заняты."]},bal_fuel:{d:"Заправка на выезде из села.",u:["Новые колонки", "Магазин", "Автомойка"],a:["Скидка на топливо", "Очередь до дороги."]},bal_farm:{d:"Овощи и мясо от местных хозяйств.",u:["Навесы", "Холодильная камера", "Парковка"],a:["Ярмарка", "Всё раскупили."]},bal_pharm:{d:"Лекарства и товары для здоровья.",u:["Витрина", "Консультант", "Доставка"],a:["День здоровья", "Очередь у кассы."]},bal_auto:{d:"Ремонт легковых и грузовых машин.",u:["Подъёмник", "Диагностика", "Шиномонтаж"],a:["Срочный ремонт", "Яма занята весь день."]},bal_barber:{d:"Стрижки и уход.",u:["Новые кресла", "Мастера", "Косметика"],a:["Акция на стрижку", "Запись на два дня."]},bal_guest:{d:"Отдых у берега Кубани.",u:["Баня", "Новые номера", "Причал"],a:["Рыбацкие выходные", "Мест нет."]},bakery:{d:"Свежая выпечка каждое утро.",u:["Новая печь", "Витрина", "Доставка"],a:["Испечь партию", "Хлеб разобрали к обеду."]},coffee:{d:"Кофе с собой и десерты.",u:["Кофемашина", "Летняя веранда", "Своя обжарка"],a:["Запустить акцию", "Очередь до двери."]},sushi:{d:"Роллы и доставка по селу.",u:["Новые ножи", "Курьеры", "Зал на 20 мест"],a:["Сет дня", "Все сеты разобрали."]},flowers:{d:"Букеты к любому празднику.",u:["Холодильник", "Свои теплицы", "Оформление"],a:["Праздничные букеты", "Цветы ушли за час."]},hardware:{d:"Всё для ремонта и стройки.",u:["Склад", "Погрузчик", "Доставка"],a:["Завоз материалов", "Прорабы всё скупили."]},books:{d:"Книги, школьные товары и подарки.",u:["Новые стеллажи", "Отдел учебников", "Кафе"],a:["Школьная ярмарка", "Полки опустели."]},nails:{d:"Маникюр и уход.",u:["Новые кресла", "Лампы", "Обучение мастеров"],a:["Акция на покрытие", "Запись на неделю."]},gym:{d:"Зал с тренерами и абонементами.",u:["Новые тренажёры", "Душевые", "Сауна"],a:["Открытая тренировка", "Абонементы раскупили."]},laundry:{d:"Чистка одежды и ковров.",u:["Новая машина", "Пункт приёма", "Экспресс-чистка"],a:["Сезон чистки", "Все машины заняты."]},print:{d:"Печать визиток, баннеров и газет.",u:["Цветной принтер", "Широкий формат", "Дизайнер"],a:["Большой заказ", "Тираж напечатан."]},vet:{d:"Лечение и уход за животными.",u:["Операционная", "УЗИ", "Стационар"],a:["День вакцинации", "Приём расписан."]},lab:{d:"Анализы и обследования.",u:["Новый анализатор", "Выезд на дом", "Онлайн-результаты"],a:["День обследований", "Очередь с утра."]},guest:{d:"Уютные номера для гостей села.",u:["Новые номера", "Баня", "Завтраки"],a:["Выходной тариф", "Мест нет."]},stops:{d:"Быстрая помощь на трассе.",u:["Новый стенд", "Круглосуточно", "Эвакуатор"],a:["Ночная смена", "Очередь из фур."]},cinema:{d:"Зал на вечерние сеансы и премьеры.",u:["Новые кресла","Лазерный проектор","Буфет"],a:["Показать премьеру","Зал заполнен на все сеансы."]},dental:{d:"Лечение зубов и профилактика.",u:["Новое кресло","Рентген-аппарат","Кабинет гигиены"],a:["День открытых дверей","Запись заполнена на неделю."]},
 market:{d:"Торговые ряды в центре села. Сдаёшь площади арендаторам и зарабатываешь на потоке покупателей.",u:["Новая вывеска","Эскалатор","Фудкорт"],a:["Устроить распродажу","Покупатели разобрали остатки."]},
 hotel:{d:"Гостиница для командированных и гостей свадеб.",u:["Новые матрасы","Ресепшн с терминалом","Номера люкс"],a:["Принять делегацию","Весь этаж снят на ночь."]},
@@ -1023,8 +1024,8 @@ let openId = null;
 function openBiz(id){ openId=id; drawSheet(); $("sheet").hidden=false; $("scrim").hidden=false; }
 function closeSheet(){ openId=null; $("sheet").hidden=true; $("scrim").hidden=true; }
 $("scrim").addEventListener("click", closeSheet);
-function inspectFee(b){ return Math.round(Math.max(1000, tenSteps(b.price*.05))*(S.player&&S.player.role==="fixer"?.7:1)); }
-function docCost(b){ return Math.round(Math.max(300, tenSteps(b.price*.03))*(S.docDisc>Date.now()?.6:1)); }
+function inspectFee(b){ return Math.round(Math.max(1000, tenSteps(baseOf(b)*.05))*(S.player&&S.player.role==="fixer"?.7:1)); }
+function docCost(b){ return Math.round(Math.max(300, tenSteps(baseOf(b)*.03))*(S.docDisc>Date.now()?.6:1)); }
 function payOf(j){ return Math.round(j.pay*(S.player&&S.player.role==="worker"?1.25:1)*((S.payMs||0)>0?2:1)); }
 function districtInfo(d){
   const list=bizIn(d);
@@ -1174,7 +1175,7 @@ function resolveMyInspection(id){
   if(!owner||owner==="you") return;
   S.world.checks++;
   if(bad.length){
-    const fine=b.price*FINE*bad.length, reward=fine/2;
+    const fine=baseOf(b)*FINE*bad.length, reward=fine/2;
     sfx.coin(); S.money+=reward; S.world.fines+=fine; S.stats.checksHit++; S.stats.reward+=reward;
     s.ask=Math.max(.75,s.ask-.17*bad.length);
     say(id,"sys",`Нарушений: ${bad.length}. Тебе: ${rub(reward)}.`);
@@ -1264,8 +1265,8 @@ function bannerHtml(b){
   const [bg,fg]=BANNER[b.kind?"d":b.id==="zolton"?"zolton":b.id==="casino"?"casino":b.civic||b.group], art=(SCENES[key]||SCENES.gov)(fg);
   return `<div class="banner" style="color:${fg}"><svg viewBox="0 0 420 132" preserveAspectRatio="xMidYMid slice"><rect width="420" height="132" fill="${bg}"/><rect width="420" height="132" fill="#000" opacity=".35"/>${art}<rect y="96" width="420" height="36" fill="url(#none)"/></svg><span class="emb">${b.id==="zolton"?"":icoOf(b)}</span><span class="sign">${b.name}</span></div>`;
 }
-const upMax=b=>b.price<75000?5:b.price<150000?7:10;
-function upCost(b,lv){ return tenSteps(b.price*(.1+.06*lv)); }
+const upMax=b=>baseOf(b)<75000?5:baseOf(b)<150000?7:10;
+function upCost(b,lv){ return tenSteps(baseOf(b)*(.1+.06*lv)); }
 function upgradesHtml(b){
   const s=S.biz[b.id], t=TYPES[b.id];
   return `<h3>Действие</h3><button class="btn main" id="actBtn" data-act="work">${t.a[0]}</button>
@@ -1588,7 +1589,7 @@ function doRacket(b){
 function fineProbe(){
   if(S.inClub){ S.probe.at=Date.now()+30000; return; }
   const p=S.probe; S.probe=null; if(Math.random()>.55) return;
-  const b=BY[p.id], fine=fineCut(Math.round(b.price*.35)); S.money=Math.max(0,S.money-fine); S.rep=Math.max(0,S.rep-10); S.stats.fines+=fine; S.policeFund+=fine*.85;
+  const b=BY[p.id], fine=fineCut(Math.round(baseOf(b)*.35)); S.money=Math.max(0,S.money-fine); S.rep=Math.max(0,S.rep-10); S.stats.fines+=fine; S.policeFund+=fine*.85;
   news("police","Дело о рэкете закрыто",`${S.player.nick}: штраф ${rub(fine)}. Пострадавшему ${ownerName(p.victim)} выплачено ${rub(fine*.15)}.`);
   showReport(`<h2>ПОСТАНОВЛЕНИЕ О ШТРАФЕ</h2><p class="sub">Дело о рэкете, с. Кочубеевское</p><dl><dt>Объект</dt><dd>${esc(b.name)}</dd><dt>Нарушитель</dt><dd>${esc(S.player.nick)}</dd></dl><span class="stamp bad">Штраф</span><p class="total">${rub(fine)}</p>`);
   jail(90,"Рэкет");
@@ -1728,7 +1729,7 @@ const JOB_ROLES={shop:["Продавец","Кассир","Грузчик"],food:
 const JOB_NAMES=["Артём","Сергей","Анна","Ирина","Павел","Дмитрий","Ольга","Наталья","Руслан","Алина","Максим","Елена","Тимур","Светлана","Игорь","Кристина"];
 function makeCands(b){ return {at:Date.now()+300000,list:[0,0,1,2].slice(0,3+(Math.random()<.5?1:0)).map(k=>{ const sk=Math.random()<.2?Math.min(2,k+1):k; return {n:pick(JOB_NAMES),role:pick(JOB_ROLES[b.group]),skill:sk}; })}; }
 const wageOf=(b,w)=>Math.round(b.inc*SKILL[w.skill][1]);
-const hireFee=(b,w)=>tenSteps(wageOf(b,w)*12+b.price*.01);
+const hireFee=(b,w)=>tenSteps(wageOf(b,w)*12+baseOf(b)*.01);
 const fireFee=(b,w)=>wageOf(b,w)*4;
 function econ(b){
   const s=S.biz[b.id], d=districtOf(b), up=1+(s.lvl||0)/upMax(b), stock=s.stock>0?1:.3, team=s.team||[];
@@ -1894,6 +1895,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 25% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["75","5 ноября 2026",["Бизнесы дороже 60 000 ₽ подорожали вдвое, их доход снижен в 1,5 раза. Стартовые бизнесы не менялись."]],
  ["74","5 ноября 2026",["В журнале разработчика появилась экономика игроков."]],
  ["73","5 ноября 2026",["ID игроков можно скопировать нажатием.","Удобный поиск в журнале разработчика."]],
  ["72","5 ноября 2026",["Исправлено двойное начисление покупок и переводов.","Журнал разработчика показывает, откуда пришли и на что ушли деньги."]],
@@ -2507,6 +2509,7 @@ $("adminView").addEventListener("click",async e=>{ const b=e.target.closest("[da
 $("adminView").addEventListener("click",async e=>{ const b=e.target.closest("[data-rep]"); if(!b) return; b.disabled=true; try{ await api("admin_report_done",{id:b.dataset.rep}); cloud.reports=cloud.reports.filter(x=>String(x.id)!==b.dataset.rep); $("aReports").innerHTML=repHtml(); toast("Отмечено"); }catch{ b.disabled=false; toast("Не получилось."); } });
 { const mn=Math.min(...DISTRICTS.map(d=>d.price)), f=9000000/mn; DISTRICTS.forEach(d=>{ d.price=Math.round(d.price*f/100000)*100000*3; d.inc=Math.round(d.inc*f*.4/10)*10; }); }
 BIG_PRICES.forEach(([id,p,i])=>{ BY[id].price=p; BY[id].inc=i; });
+BIZ.forEach(b=>{ b.base=b.price; if(b.price>START_BIZ_MAX){ b.price*=2; b.inc=Math.round(b.inc/1.5/10)*10; } });
 noBots();
 pinsToRoads();
 buildGraph();
