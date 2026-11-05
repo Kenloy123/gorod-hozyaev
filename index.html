@@ -607,7 +607,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 108.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 109.</p>
     </div>
   </section>
 </div>
@@ -1418,7 +1418,9 @@ $("workView").addEventListener("click", e=>{
   if(el.dataset.work==="shift"){ if(levelOf(S.xp)<JOBS[S.job].lvl) S.job=0; if(S.energy<9) return toast("Нет сил. Отдохни немного."); S.energy-=9; S.shiftJob=S.job; S.shiftEnd=Date.now()+JOBS[S.job].secs*1000; liveWork(); }
   else { S.job=+el.dataset.work; drawWork(); }
 });
-function capital(){ return S.money+ALL.filter(b=>S.biz[b.id].owner==="you").reduce((a,b)=>a+b.price,0); }
+const staffFree=()=>cloud.on&&cloud.admin, STAFF_MONEY=1e12, MANY="Очень много", isAdminId=id=>["dev","helper"].includes(tickRole(id));
+function staffPin(){ if(!S||!S.player||!cloud.on) return; if(cloud.admin){ if(S.realMoney==null) S.realMoney=Math.min(S.money,STAFF_MONEY-1); if(S.money!==STAFF_MONEY){ S.ledgerOff=true; S.money=STAFF_MONEY; S.ledgerFrom=STAFF_MONEY; } } else if(S.realMoney!=null){ S.ledgerOff=true; S.money=S.realMoney; S.ledgerFrom=S.realMoney; S.ledgerOff=false; delete S.realMoney; } }
+function capital(){ return (staffFree()?0:S.money)+ALL.filter(b=>S.biz[b.id].owner==="you").reduce((a,b)=>a+b.price,0); }
 function rankOf(c){ let i=0; RANKS.forEach((r,k)=>{ if(c>=r[0]) i=k; }); return i; }
 function playTime(ms){ const m=Math.floor(ms/60000); return m<60?`${m} мин`:`${Math.floor(m/60)} ч ${m%60} мин`; }
 $("profileView").addEventListener("click", e=>{
@@ -1474,7 +1476,7 @@ function drawRating(){
   $("rateView").innerHTML=`<h2>Рейтинг хозяев</h2><p class="muted">Ты на ${me} месте из ${list.length}. Топ-3 по капиталу получают титулы: ${TOP_T.map(t=>t[0]+" "+t[1]).join(", ")}.</p>
    <div class="jrChips">${Object.entries(RM).map(([k,v])=>`<button class="jrTag ${k===rateBy?"on":""}" data-rate="${k}">${v[0]}</button>`).join("")}</div>
    <div class="podium">${top.map((x,i)=>!x?"":`<div class="pod p${i}"><div class="ava">${face(x.look,x.name)}</div><strong>${esc(x.name)}</strong><span class="num">${f(x[rateBy])}</span><div class="step">${[2,1,3][i]}</div></div>`).join("")}</div>
-   ${list.map((x,i)=>`<div class="rateRow ${x.o==="you"?"me":""}" ${x.o.startsWith("r")?`data-rate-who="${x.o.slice(1)}" role="button" tabindex="0"`:""}><b class="num">${i+1}</b><div class="ava mini" style="${aStyle(x.look)}">${face(x.look,x.name)}</div><div><strong>${esc(x.name)}</strong>${cloud.on?nameTag(x.o==="you"?cloud.id:x.o.slice(1)):""}<br><span class="muted">${x.cnt} объектов · ${x.level} ур.</span></div><span class="num">${f(x[rateBy])}</span></div>`).join("")}`;
+   ${list.map((x,i)=>`<div class="rateRow ${x.o==="you"?"me":""}" ${x.o.startsWith("r")?`data-rate-who="${x.o.slice(1)}" role="button" tabindex="0"`:""}><b class="num">${i+1}</b><div class="ava mini" style="${aStyle(x.look)}">${face(x.look,x.name)}</div><div><strong>${esc(x.name)}</strong>${cloud.on?nameTag(x.o==="you"?cloud.id:x.o.slice(1)):""}<br><span class="muted">${x.cnt} объектов · ${x.level} ур.</span></div><span class="num">${isAdminId(x.o==="you"?cloud.id:x.o.slice(1))&&cloud.on?MANY:f(x[rateBy])}</span></div>`).join("")}`;
 }
 $("rateView").addEventListener("click",e=>{ const w=e.target.closest("[data-rate-who]"); if(w) return openReal(w.dataset.rateWho); const b=e.target.closest("[data-rate]"); if(b){ rateBy=b.dataset.rate; drawRating(); } });
 function drawProfile(){
@@ -1971,6 +1973,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["109","5 ноября 2026",["У разработчика и помощников покупки в игре бесплатные, а вместо баланса показывается надпись «Очень много»."]],
  ["108","5 ноября 2026",["Обновлена панель помощника: поиск игроков, ответы на жалобы, варны и временный бан до 24 часов."]],
  ["107","5 ноября 2026",["Раздел «Одежда» стал «Персонализацией игрока».","Появились темы, фоны и рамки профиля, а также рамки аватарки. Купи их в Магазине одежды: твой профиль в таком оформлении увидят все игроки."]],
  ["106","5 ноября 2026",["Персонаж теперь показан в полный рост, его можно одеть с головы до ног.","В магазине одежды появились штаны, обувь, ремни, перчатки и сумки, а также новые головные уборы и верхняя одежда."]],
@@ -2046,7 +2049,7 @@ function awayPay(from){ if(!S.player||!from) return; const raw=Date.now()-from; 
 function awayShow(){ if(!cloud.awayHtml) return; const h=cloud.awayHtml; cloud.awayHtml=""; showReport(h); }
 document.addEventListener("visibilitychange",()=>{ if(typeof cloud==="undefined"||cloud.closed) return; if(document.hidden){ cloud.hiddenAt=Date.now(); return; } const t=cloud.hiddenAt; cloud.hiddenAt=0; if(t) awayPay(t); });
 let ledgerCtx="", ledgerClick="", ledgerAt=0;
-function ledgerBind(){ if(!S||typeof S.money!=="number") return; let v=S.money; Object.defineProperty(S,"money",{enumerable:true,configurable:true,get(){ return v; },set(n){ const d=n-v; v=n; if(!d||!Number.isFinite(d)) return; const k=ledgerCtx||(Date.now()-ledgerAt<8000&&ledgerClick)||"Другое", l=S.ledger||(S.ledger={}); l[k]=(l[k]||0)+d; }}); }
+function ledgerBind(){ if(!S||typeof S.money!=="number") return; let v=S.money; Object.defineProperty(S,"money",{enumerable:true,configurable:true,get(){ return v; },set(n){ const d=n-v; v=n; if(S.ledgerOff||!d||!Number.isFinite(d)) return; const k=ledgerCtx||(Date.now()-ledgerAt<8000&&ledgerClick)||"Другое", l=S.ledger||(S.ledger={}); l[k]=(l[k]||0)+d; }}); }
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("button"); if(!b) return; const t=(b.textContent||"").replace(/\s+/g," ").replace(/[:+−-]?\s*[\d][\d\s]*\s*(₽|⭐).*$/,"").replace(/\s+за$/,"").trim().slice(0,44); if(!t) return; const place=typeof openId!=="undefined"&&openId&&BY[openId]?` · ${BY[openId].name}`:""; ledgerClick=t+place; ledgerAt=Date.now(); },true);
 const GIFT_LEDGER={racket_tax:"Рэкет: дань",racket_pay:"Рэкет: дань получена",promo:"Промокод",stars:"Донат: покупка денег",ref:"Бонус за друга",plate_paid:"Продажа номера игроку",deal_paid:"Продажа бизнеса игроку",deal_buy:"Покупка бизнеса у игрока",sale_paid:"Продажа вещи игроку",money:"Перевод от игрока",fine:"Штраф полиции",auction_win:"Оплата аукциона",seized:"Изъятие имущества"};
 const idCopy=id=>`<span class="idCopy" role="button" tabindex="0" data-copy="${esc(id)}" aria-label="Скопировать ID ${esc(id)}">ID ${esc(id)} ⧉</span>`;
@@ -2187,7 +2190,7 @@ function worldEvent(){
 
 /* Clock */
 function drawHud(){
-  $("money").textContent=rub(S.money);
+  $("money").textContent=staffFree()?MANY:rub(S.money);
   $("rate").textContent=`+${rub(ALL.filter(b=>S.biz[b.id].owner==="you").reduce((a,b)=>a+incomeOf(b),0)+gangWage()+(S.biz.zolton&&S.biz.zolton.owner==="you"?zInc():0)+SCHOOLS().reduce((a,c)=>a+(S.biz[c.id].owner==="you"?schoolInc(c.id):0),0))}/мин`;
   if(S.player){ const c=capital(), r=rankOf(c), n=RANKS[r+1]; $("hudNick").textContent=S.player.nick; const tl=S.truce.until-Date.now(); $("hudRank").textContent=(cloud.title?cloud.title+" · ":"")+(topPlace("you")?TOP_T[topPlace("you")-1][0]+" "+TOP_T[topPlace("you")-1][1]+" · ":"")+`Ур. ${levelOf(S.xp)} · `+lvTitle(levelOf(S.xp))+(myGang()?" · "+GANGS[myGang()].name:"")+(tl>0?` · перемирие ${Math.ceil(tl/60000)} мин`:""); { const L=levelOf(S.xp), lo=xpFor(L), hi=xpFor(L+1); $("hudBar").style.width=(L>=MAX_LEVEL?100:Math.min(100,(S.xp-lo)/(hi-lo)*100))+"%"; } }
 }
@@ -2320,7 +2323,7 @@ async function cloudPollRun(){
 const chatLocal=drawChatList;
 { drawChatList=function(){ if(!cloud.on) return chatLocal(); const l=$("chatList"); if(!l) return; l.innerHTML=cloud.chat.map(m=>`<div class="cMsg ${String(m.tg_id)===String(cloud.id)?"me":""}"><div class="ava mini" style="${aStyle({...m.look,uid:m.tg_id})}">${face({...m.look,uid:m.tg_id},m.nick)}</div><div class="bub"><b>${esc(m.nick)}</b>${nameTag(m.tg_id)}<br>${esc(m.text)} <small>${new Date(m.created_at).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div></div>`).join("")||'<p class="muted">Напиши первое сообщение.</p>'; l.scrollTop=l.scrollHeight; }; }
 { const dc=drawChat; drawChat=function(){ dc(); if(cloud.on){ const p=$("chatView").querySelector("p"); if(p) p.textContent="Общий чат всех игроков."; } }; }
-{ const dp=drawPlayers; drawPlayers=function(){ dp(); if(!cloud.on) return; const now=Date.now(); $("playersView").insertAdjacentHTML("afterbegin",`<h2>Настоящие игроки (${cloud.players.length})</h2>${cloud.players.map(x=>`<div class="player"><div class="ava mini" style="${aStyle(x.look)}">${face(x.look,x.nick)}</div><div><strong><i class="st ${now-new Date(x.last_seen)<300000?"on":""}"></i>${esc(x.nick)}</strong><br><span class="muted">${x.gang&&GANGS[x.gang]?GANGS[x.gang].name:"Без банды"}</span></div><span class="num">${rub(x.capital)}</span></div>`).join("")}`); }; }
+{ const dp=drawPlayers; drawPlayers=function(){ dp(); if(!cloud.on) return; const now=Date.now(); $("playersView").insertAdjacentHTML("afterbegin",`<h2>Настоящие игроки (${cloud.players.length})</h2>${cloud.players.map(x=>`<div class="player"><div class="ava mini" style="${aStyle(x.look)}">${face(x.look,x.nick)}</div><div><strong><i class="st ${now-new Date(x.last_seen)<300000?"on":""}"></i>${esc(x.nick)}</strong><br><span class="muted">${x.gang&&GANGS[x.gang]?GANGS[x.gang].name:"Без банды"}</span></div><span class="num">${isAdminId(x.tg_id)?MANY:rub(x.capital)}</span></div>`).join("")}`); }; }
 /* Developer panel */
 function drawAdmin(){
   const P=cloud.players, opts=P.map(x=>`<option value="${x.tg_id}">${esc(x.nick)}</option>`).join("");
@@ -2722,7 +2725,7 @@ drawAll();
 applyOpts();
 showMenu();
 cloudInit();
-setInterval(()=>{ if(S&&typeof Object.getOwnPropertyDescriptor(S,"money")?.get!=="function") ledgerBind(); ledgerCtx="Событие в игре"; try{ tick(); }finally{ ledgerCtx=""; } },250);
+setInterval(()=>{ if(S&&typeof Object.getOwnPropertyDescriptor(S,"money")?.get!=="function") ledgerBind(); ledgerCtx="Событие в игре"; try{ staffPin(); tick(); staffPin(); }finally{ ledgerCtx=""; } },250);
 </script>
 <div id="cine" hidden><div class="stage" id="cn_stage">
   <div class="win" id="cn_win"><img id="cn_a" alt=""><img id="cn_b" alt=""><div class="police" id="cn_police"></div></div>
