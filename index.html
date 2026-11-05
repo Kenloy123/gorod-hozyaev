@@ -2162,7 +2162,7 @@ $("adminView").addEventListener("click",async e=>{
 
 /* Online stage 2 */
 const PUB=()=>({refs:S.refs||0,level:levelOf(S.xp),rank:RANKS[rankOf(capital())][1],rep:S.rep,cars:S.cars,car:S.car,showcase:S.showcase,faction:S.faction,cnt:ALL.filter(b=>S.biz[b.id].owner==="you").length,ach:ACHIEVE.filter(a=>a[3](S.stats)).length,stats:{shifts:S.stats.shifts,bought:S.stats.bought,sold:S.stats.sold,rackets:S.stats.rackets,arrests:S.stats.arrests,km:Math.round(S.stats.km)}});
-cloudSave=async function(){ if(!cloud.on||!S.player) return; cloud.lastSave=Date.now(); try{ await api("save",{save:S,look:myLook(),gang:S.player.gang,grole:S.player.grole,capital:Math.round(capital()),public:PUB()}); }catch{} };
+cloudSave=async function(){ if(!cloud.on||!S.player||cloud.closed) return; cloud.lastSave=Date.now(); try{ await api("save",{save:S,look:myLook(),gang:S.player.gang,grole:S.player.grole,capital:Math.round(capital()),public:PUB()}); }catch{} };
 function applyCmd(c){ if(c.takeCar&&S.cars.includes(c.takeCar)){ const n=CAR_BY[c.takeCar]?CAR_BY[c.takeCar][1]:"Транспорт"; dropItem("car",c.takeCar); notify("bad","Транспорт изъят",`${n}. Причина: ${c.why||"нарушение правил"}.`); } if(c.money!=null) S.money=c.mode==="set"?c.money:S.money+c.money; if(c.respect!=null) S.respect=c.respect; if(c.rep!=null) S.rep=c.rep; if(c.role&&S.player.gang) S.player.grole=c.role; if(c.gang!==undefined) S.player.gang=c.gang; if(c.car&&!S.cars.includes(c.car)) S.cars.push(c.car); if(c.level!=null) S.xp=xpFor(c.level); notify("info","Сообщение администрации","Твой аккаунт обновлён."); drawHud(); drawIdentity(); drawActive(); }
 cloudPoll=async function(){
   if(!cloud.on) return;
