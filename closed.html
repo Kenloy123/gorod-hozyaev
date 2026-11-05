@@ -15,5 +15,6 @@ img{display:block;width:100%;height:100%;object-fit:contain}
 <body>
 <img src="maintenance.jpg" alt="Город Хозяев. Технические работы. Город закрыт на ремонт. Скоро вернёмся.">
 <script>addEventListener("load",function(){var t=window.Telegram&&Telegram.WebApp;if(t){t.ready();t.expand();try{t.setHeaderColor("#0B0E1A");t.setBackgroundColor("#0B0E1A")}catch(e){}}});</script>
+<script>setInterval(function(){fetch("status.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(d){if(d&&!d.closed)location.replace("./?v="+Date.now())}).catch(function(){})},20000);</script>
 </body>
 </html>
