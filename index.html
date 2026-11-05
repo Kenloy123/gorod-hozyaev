@@ -607,7 +607,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 115.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 116.</p>
     </div>
   </section>
 </div>
@@ -661,7 +661,7 @@ admin:"В игре здесь можно договориться о давле�
 };
 
 BIZ.forEach(b=>b.price*=3); DISTRICTS.forEach(d=>d.price*=4);
-const DISTRICT_BONUS = 1.2;
+const DISTRICT_BONUS = 10;
 function inside(x,y,poly){
   const p=poly.split(" ").map(c=>c.split(",").map(Number)); let c=false;
   for(let i=0,j=p.length-1;i<p.length;j=i++){ const [xi,yi]=p[i],[xj,yj]=p[j]; if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c; }
@@ -1980,6 +1980,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["116","6 ноября 2026",["Владелец района получает ×10 к выручке своих бизнесов в этом районе."]],
  ["115","6 ноября 2026",["Доход с территории районов сильно увеличен: теперь район приносит заметно больше бизнеса."]],
  ["114","6 ноября 2026",["Приглашённый игрок даёт 10 000 ₽ и +5 влияния банде.","Контрабанда теперь даёт +3 влияния банде.","Боты больше не торгуются за районы: их можно купить по цене города."]],
  ["113","5 ноября 2026",["Помощники могут добавлять и устанавливать деньги игрокам через панель."]],
