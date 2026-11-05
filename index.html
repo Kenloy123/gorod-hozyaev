@@ -1080,7 +1080,7 @@ function docCost(b){ return Math.round(Math.max(300, tenSteps(baseOf(b)*.03))*(S
 function payOf(j){ return Math.round(j.pay*(S.player&&S.player.role==="worker"?1.25:1)*((S.payMs||0)>0?2:1)); }
 function districtInfo(d){
   const list=bizIn(d);
-  return `<p class="muted">Хозяин района получает доход с территории, 50% дохода всех занятых бизнесов района и +20% к своим бизнесам здесь. Город доплачивает эти деньги сверху, владельцы бизнесов ничего не теряют. С районом можно иметь только 2 бизнеса.</p>
+  return `<p class="muted">Хозяин района получает доход с территории, 50% дохода всех занятых бизнесов района и ×10 к выручке своих бизнесов здесь. Город доплачивает эти деньги сверху, владельцы бизнесов ничего не теряют. С районом можно иметь только 2 бизнеса.</p>
    <h3>Улицы района (${streetsIn(d).length})</h3><p>${streetsIn(d).join(", ")}</p>
    <h3>Бизнесы в районе</h3><p>${list.length?list.map(b=>`${b.name} (${ownerName(S.biz[b.id].owner)})`).join(", "):"Пока нет"}</p>`;
 }
