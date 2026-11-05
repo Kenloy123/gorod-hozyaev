@@ -1157,12 +1157,12 @@ $("sheet").addEventListener("click", e => {
   if(act==="doc8"||act==="docAll8"){
     const ks=act==="doc8"?[el.dataset.doc]:DOCS.map(([k])=>k).filter(k=>s.docs[k]-Date.now()<=DOC_RENEW), c=ks.length*docCost(b)*DOC_LONG_K;
     if(!ks.length) return; if(S.money<c) return toast(`На документы нужно ${rub(c)}.`);
-    S.money-=c; S.stats.docs+=ks.length; ks.forEach(k=>s.docs[k]=Date.now()+DOC_LONG); toast("Документы действуют 8 часов"); liveSheet(); drawHud(); drawAlert(); return;
+    S.money-=c; S.stats.docs+=ks.length; ks.forEach(k=>s.docs[k]=Date.now()+DOC_LONG); toast("Документы действуют 8 часов"); persist(); cloudSave(); liveSheet(); drawHud(); drawAlert(); return;
   }
   if(act==="doc"){
     const c=docCost(b);
     if(S.money<c) return toast(`На документ нужно ${rub(c)}.`);
-    S.money-=c; S.stats.docs++; const k=el.dataset.doc; s.docs[k]=Date.now()+DOC_LIFE; liveSheet(); drawHud(); drawAlert(); return;
+    S.money-=c; S.stats.docs++; const k=el.dataset.doc; s.docs[k]=Date.now()+DOC_LIFE; toast("Документ действует 10 минут"); persist(); cloudSave(); liveSheet(); drawHud(); drawAlert(); return;
   }
   if(act==="sell"){
     const sum=b.price*.7; if(cloud.on&&!el.dataset.ok){ el.disabled=true; return api("prop_release",{id,price:Math.round(sum)}).then(()=>{ el.dataset.ok=1; el.disabled=false; el.click(); }).catch(er=>{ el.disabled=false; toast(`Не получилось продать (${errText(er)}).`); }); } S.money+=sum; S.stats.sold++; S.stats.turnover+=sum; setOwner(id,null);
