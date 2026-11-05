@@ -607,7 +607,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 120.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 121.</p>
     </div>
   </section>
 </div>
@@ -1545,6 +1545,7 @@ const CARS=[["b1","Самокат",6000,12,0,"#8A8F98","kick","micro"],["b2","В
 ["c6","LADA Niva",750000,70,3,"#4D5A3A","suv","suv"],["c7","Toyota Hilux",3200000,100,7,"#7A6A4F","pickup","suv"],["c8","Toyota Land Cruiser 300",8500000,125,12,"#0F1115","suv","suv"],
 ["c9","BMW 5",6200000,140,11,"#1F2A44","sedan","prem"],["c10","Mercedes-Benz E",6800000,140,12,"#2B2D33","sedan","prem"],
 ["c11","Mercedes-Benz S",15000000,155,18,"#0B0B0E","sedan","lux"],["c12","Porsche 911",18000000,190,22,"#7E1420","coupe","lux"],
+["c13","LADA Priora",380000,85,1,"#9AA0A8","sedan","eco"],["c14","Kia Rio 4 рестайлинг (2021)",1300000,100,3,"#C8CCD2","sedan","comf"],["c15","Audi A8",12000000,150,16,"#15171C","sedan","lux"],["c16","Mercedes-AMG E63 S",16500000,175,20,"#2B2D33","sedan","lux"],["c17","BMW M5 E60",4200000,165,13,"#1F2A44","sedan","prem"],["c18","ВАЗ-2107",120000,60,0,"#D9D4C5","sedan","eco"],["c19","Спортбайк",1500000,180,8,"#B3372E","moped","micro"],["c20","ВАЗ-2114",220000,70,0,"#3A4A5A","sedan","eco"],["c21","Hyundai Solaris",1100000,95,3,"#E8E8EC","sedan","comf"],["c22","Toyota Corolla",2100000,105,5,"#8A8F98","sedan","comf"],["c23","УАЗ Патриот",1700000,85,4,"#4D5A3A","suv","suv"],["c24","Lexus LX 600",14000000,130,16,"#14151A","suv","suv"],["c25","BMW X5",9500000,145,14,"#2F3B52","suv","prem"],["c26","Range Rover",17000000,140,19,"#1E3A2F","suv","lux"],["c27","Nissan GT-R",13000000,195,18,"#C8CCD2","coupe","lux"],
 ["s1","Танк",1000000000,99999,100,"#4D5A3A","tank","secret"],["s2","Вертолёт",1000000000,99999,100,"#1F2A44","heli","secret"],["s3","Ракета SpaceX",1000000000,99999,100,"#E8E8EC","rocket","secret"]];
 const CAR_BY=Object.fromEntries(CARS.map(c=>[c[0],c]));
 function carSvg(c){
@@ -1981,6 +1982,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["121","6 ноября 2026",["В автосалоне 15 новых машин и мотоциклов, среди них Priora, ВАЗ-2107, BMW M5 E60, Audi A8 и спортбайк."]],
  ["120","6 ноября 2026",["Банда может отказаться от крыши точки за 25% казны."]],
  ["119","6 ноября 2026",["Хозяин района получает с бизнесов района ещё в 2 раза больше."]],
  ["118","6 ноября 2026",["В карточке района доход бизнесов показан с учётом ×10 для хозяина района."]],
