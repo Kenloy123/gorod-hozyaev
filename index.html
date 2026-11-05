@@ -607,7 +607,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 117.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 118.</p>
     </div>
   </section>
 </div>
@@ -1447,11 +1447,11 @@ function streetRows(q){
   return list.map(n=>{const pt=roadMid(n), d=pt&&districtAt(...pt); return `<div class="row"><div>${n}<br><span class="muted">${pt?(d?d.name:"За границей районов"):"место уточняется"}</span></div>${pt?`<button class="btn small" data-street="${n}">На карте</button>`:""}</div>`}).join("")||`<p class="muted">Такой улицы нет в списке.</p>`;
 }
 let areaSort="pay";
-function districtRows(){ const r=DISTRICTS.map(d=>{ const l=d._biz||(d._biz=bizIn(d)), busy=l.filter(b=>S.biz[b.id].owner).length, cut=districtCut(d), total=d.inc+cut; return {d,o:S.biz[d.id].owner,n:l.length,busy,net:l.reduce((a,b)=>a+bizNet(b),0),cut,total,pay:d.price/total/60}; }); const by={pay:(a,b)=>a.pay-b.pay,inc:(a,b)=>b.total-a.total,biz:(a,b)=>b.n-a.n,price:(a,b)=>b.d.price-a.d.price}; return r.sort(by[areaSort]); }
+function districtRows(){ const r=DISTRICTS.map(d=>{ const l=d._biz||(d._biz=bizIn(d)), busy=l.filter(b=>S.biz[b.id].owner).length, cut=districtCut(d), total=d.inc+cut; return {d,o:S.biz[d.id].owner,n:l.length,busy,net:l.reduce((a,b)=>a+bizNet(b),0)*10,cut,total,pay:d.price/total/60}; }); const by={pay:(a,b)=>a.pay-b.pay,inc:(a,b)=>b.total-a.total,biz:(a,b)=>b.n-a.n,price:(a,b)=>b.d.price-a.d.price}; return r.sort(by[areaSort]); }
 function drawArea(){
   $("areaView").innerHTML=`<h2>Районы</h2><p class="muted">Названия районов взяты с карты, границы между ними условные.</p>
    <div class="jrChips">${[["pay","Окупаемость"],["inc","Доход"],["biz","Бизнесы"],["price","Цена"]].map(([k,t])=>`<button class="jrTag ${areaSort===k?"on":""}" data-area-sort="${k}">${t}</button>`).join("")}</div>
-   ${districtRows().map(x=>`<div class="card"><div class="offerLine"><strong>${esc(x.d.name)}</strong><b>${rub(x.d.price)}</b></div><p class="muted"><i class="dot" style="background:${ownerColor(x.o)}"></i>${ownerName(x.o)}</p><div class="kv"><span>Бизнесов</span><b>${x.n} (занято ${x.busy})</b><span>Доход бизнесов района</span><b>${rub(x.net)}/мин</b><span>Доход с территории</span><b>${rub(x.d.inc)}/мин</b><span>С бизнесов ×10</span><b>${rub(x.cut)}/мин</b><span>Хозяин получает</span><b class="ok">${rub(x.total)}/мин</b><span>Окупаемость</span><b>${Math.round(x.pay)} ч</b></div><button class="btn small" data-area="${x.d.id}">Открыть</button></div>`).join("")}
+   ${districtRows().map(x=>`<div class="card"><div class="offerLine"><strong>${esc(x.d.name)}</strong><b>${rub(x.d.price)}</b></div><p class="muted"><i class="dot" style="background:${ownerColor(x.o)}"></i>${ownerName(x.o)}</p><div class="kv"><span>Бизнесов</span><b>${x.n} (занято ${x.busy})</b><span>Доход бизнесов района</span><b>${rub(x.net)}/мин</b><span>Доход с территории</span><b>${rub(x.d.inc)}/мин</b><span>50% с бизнесов</span><b>${rub(x.cut)}/мин</b><span>Хозяин получает</span><b class="ok">${rub(x.total)}/мин</b><span>Окупаемость</span><b>${Math.round(x.pay)} ч</b></div><button class="btn small" data-area="${x.d.id}">Открыть</button></div>`).join("")}
    <h3>Организации</h3><p class="muted">Адреса из справочника. В игре обычные заведения показаны под общими названиями.</p>
    ${ORGS.map(([n,a])=>`<div class="row"><span>${n}</span><span class="muted">${a}</span></div>`).join("")}
    <h3>Улицы села (${STREET_NAMES.length})</h3>
@@ -1980,6 +1980,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["118","6 ноября 2026",["В карточке района доход бизнесов показан с учётом ×10 для хозяина района."]],
  ["117","6 ноября 2026",["Хозяин района получает в 10 раз больше с занятых бизнесов своего района.","Доход владельцев бизнесов не меняется."]],
  ["116","6 ноября 2026",["Владелец района получает ×10 к выручке своих бизнесов в этом районе."]],
  ["115","6 ноября 2026",["Доход с территории районов сильно увеличен: теперь район приносит заметно больше бизнеса."]],
