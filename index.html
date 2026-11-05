@@ -581,7 +581,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 65.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 66.</p>
     </div>
   </section>
 </div>
@@ -735,11 +735,12 @@ const LOOK0={mask:0,mouth:0,sex:"m",skin:1,face:0,eyes:0,brow:0,style:1,hair:0,b
 const photoOk=u=>typeof u==="string"&&/^https:\/\/(t\.me\/i\/userpic\/|[a-z0-9.-]+\.telesco\.pe\/)/.test(u);
 const myPhoto=()=>{ try{ return Telegram.WebApp.initDataUnsafe.user.photo_url||""; }catch{ return ""; } };
 const myTg=()=>{ try{ return Telegram.WebApp.initDataUnsafe.user.username||""; }catch{ return ""; } };
-const myLook=()=>({...S.player.look,photo:myPhoto(),tg:myTg()});
+const myLook=()=>({...S.player.look,photo:myPhoto(),tg:myTg(),uid:(typeof cloud!=="undefined"&&cloud.id)||S.tg||null});
 function tgLink(look,own){ const u=look&&look.tg; if(typeof u==="string"&&/^[A-Za-z0-9_]{4,32}$/.test(u)) return `<a class="tgLink" href="https://t.me/${u}" target="_blank" rel="noopener noreferrer" data-tg="${u}">Telegram: @${u}</a>`; return own?`<span class="tgLink off">Задай имя пользователя в Telegram, чтобы здесь появилась ссылка</span>`:`<span class="tgLink off">Telegram скрыт</span>`; }
 document.addEventListener("click",e=>{ const a=e.target.closest&&e.target.closest("[data-tg]"); if(!a) return; try{ const w=Telegram.WebApp; if(w.initData){ e.preventDefault(); w.openTelegramLink("https://t.me/"+a.dataset.tg); } }catch{} });
-function face(look,name){ const l=esc([...String(name||"?").trim()][0]||"?").toUpperCase(), u=look&&look.photo; return photoOk(u)?`<img class="tgPic" src="${esc(u)}" alt="" referrerpolicy="no-referrer" data-l="${l}">`:`<span class="tgLetter">${l}</span>`; }
-document.addEventListener("error",e=>{ const t=e.target; if(t&&t.classList&&t.classList.contains("tgPic")){ const x=document.createElement("span"); x.className="tgLetter"; x.textContent=t.dataset.l||"?"; t.replaceWith(x); } },true);
+const API_LIVE=()=>{ try{ return API_URL; }catch{ return ""; } };
+function face(look,name){ const l=esc([...String(name||"?").trim()][0]||"?").toUpperCase(), u=look&&look.photo; const id=look&&look.uid, via=/^\d+$/.test(String(id||""))&&/^http/.test(API_LIVE())?`${API_LIVE()}?avatar=${id}`:""; if(photoOk(u)||via) return `<img class="tgPic" src="${esc(photoOk(u)?u:via)}" alt="" referrerpolicy="no-referrer" data-l="${l}" data-alt="${photoOk(u)?via:""}">`; return `<span class="tgLetter">${l}</span>`; }
+document.addEventListener("error",e=>{ const t=e.target; if(t&&t.classList&&t.classList.contains("tgPic")){ if(t.dataset.alt){ const a=t.dataset.alt; t.dataset.alt=""; t.src=a; return; } const x=document.createElement("span"); x.className="tgLetter"; x.textContent=t.dataset.l||"?"; t.replaceWith(x); } },true);
 function avatar(l0,big){
   const l={...LOOK0,...l0}, skin=SKINS[l.skin], hair=HAIRS[l.hair], coat=COATS[l.coat], shirt=SHIRTS[l.shirt], f=l.sex==="f", [bg,gl]=BACKS[l.bg];
   const headRx=[20,22,18,22,21][l.face], headRy=[24,23,26,24,21][l.face], jaw=l.face===1||l.face===3?`<path d="M31 56 Q33 76 50 77 Q67 76 69 56Z" fill="${skin}"/>`:"";
@@ -2079,7 +2080,7 @@ function devApi(a,x){ const me={tg_id:900000,nick:S.player?S.player.nick:"Раз
   if(a==="plate_mine") return Promise.resolve({list:DEV.plates}); if(a==="plate_market") return Promise.resolve({list:DEV.plates.filter(q=>q.price)});
   if(a==="plate_spin"){ const L="АВЕКМНОРСТУХ", r=()=>L[Math.floor(Math.random()*12)], t=x.tier, d=t==="elite"?String((1+Math.floor(Math.random()*9))*111):String(100+Math.floor(Math.random()*899)), plate=`${r()}${d}${r()}${r()} ${x.region}`, category=t==="elite"?"Блатной":"Обычный", fee=plFee(x.region,t); DEV.plates.unshift({plate,category,car:null,price:null,owner_tg:900000,owner_nick:me.nick}); return Promise.resolve({plate,category,fee}); }
   if(a==="plate_attach"){ DEV.plates.forEach(q=>{ if(x.car&&q.car===x.car) q.car=null; }); const q=DEV.plates.find(q=>q.plate===x.plate); q.car=x.car||null; q.price=null; return Promise.resolve(ok); } if(a==="plate_sell"){ const q=DEV.plates.find(q=>q.plate===x.plate); q.price=x.price; q.car=null; return Promise.resolve(ok); } if(a==="plate_drop"){ DEV.plates=DEV.plates.filter(q=>q.plate!==x.plate); return Promise.resolve(ok); }
-  if(a==="deal_list") return Promise.resolve({deals:[]}); if(a==="sale_list") return Promise.resolve({incoming:[],outgoing:[]}); if(a==="prop_migrate") return Promise.resolve({lost:[]}); if(a==="stars_invoice") return Promise.reject(Object.assign(new Error("dev"),{code:"Оплата работает только в Telegram"}));
+  if(a==="deal_list") return Promise.resolve({deals:[]}); if(a==="sale_list") return Promise.resolve({incoming:[],outgoing:[]}); if(a==="prop_migrate") return Promise.resolve({lost:[]}); if(a==="admin_accounts") return Promise.resolve({list:[{tg_id:900000,nick:S.player?S.player.nick:"Игрок",tg:"demo_user",last_seen:new Date().toISOString(),banned:false}]}); if(a==="stars_invoice") return Promise.reject(Object.assign(new Error("dev"),{code:"Оплата работает только в Telegram"}));
   return Promise.resolve(ok); }
 async function cloudInit(){
   if(!API_URL.startsWith("http")){ cloud.dev=true; cloud.on=true; cloud.id=900000; cloud.admin=true; S.tg=900000; S.season=2; setInterval(()=>cloudPoll(),3000); chatPull(); return; }
@@ -2098,7 +2099,7 @@ async function cloudPoll(){
     if(!$("playersView").hidden||!$("adminView").hidden){ cloud.players=(await api("players")).players||[]; if(!$("playersView").hidden) drawPlayers(); } }catch{}
 }
 const chatLocal=drawChatList;
-{ drawChatList=function(){ if(!cloud.on) return chatLocal(); const l=$("chatList"); if(!l) return; l.innerHTML=cloud.chat.map(m=>`<div class="cMsg ${String(m.tg_id)===String(cloud.id)?"me":""}"><div class="ava mini">${face(m.look,m.nick)}</div><div class="bub"><b>${esc(m.nick)}</b>${esc(m.text)} <small>${new Date(m.created_at).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div></div>`).join("")||'<p class="muted">Напиши первое сообщение.</p>'; l.scrollTop=l.scrollHeight; }; }
+{ drawChatList=function(){ if(!cloud.on) return chatLocal(); const l=$("chatList"); if(!l) return; l.innerHTML=cloud.chat.map(m=>`<div class="cMsg ${String(m.tg_id)===String(cloud.id)?"me":""}"><div class="ava mini">${face({...m.look,uid:m.tg_id},m.nick)}</div><div class="bub"><b>${esc(m.nick)}</b>${esc(m.text)} <small>${new Date(m.created_at).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div></div>`).join("")||'<p class="muted">Напиши первое сообщение.</p>'; l.scrollTop=l.scrollHeight; }; }
 { const dc=drawChat; drawChat=function(){ dc(); if(cloud.on){ const p=$("chatView").querySelector("p"); if(p) p.textContent="Общий чат всех игроков."; } }; }
 { const dp=drawPlayers; drawPlayers=function(){ dp(); if(!cloud.on) return; const now=Date.now(); $("playersView").insertAdjacentHTML("afterbegin",`<h2>Настоящие игроки (${cloud.players.length})</h2>${cloud.players.map(x=>`<div class="player"><div class="ava mini">${face(x.look,x.nick)}</div><div><strong><i class="st ${now-new Date(x.last_seen)<300000?"on":""}"></i>${esc(x.nick)}</strong><br><span class="muted">${x.gang&&GANGS[x.gang]?GANGS[x.gang].name:"Без банды"}</span></div><span class="num">${rub(x.capital)}</span></div>`).join("")}`); }; }
 /* Developer panel */
@@ -2140,7 +2141,7 @@ cloudPoll=async function(){
   }catch{}
 };
 cloud.last=0; cloud.mine=[];
-function msgHtml(m){ const me=String(m.tg_id)===String(cloud.id), t=esc(m.text).replace(/@([^\s,.:!?]{2,16})/g,(a,n)=>`<span class="ment ${n===S.player.nick?"mine":""}">@${n}</span>`); if(m.sys) return `<div class="cSys">${t}</div>`; return `<div class="cMsg ${me?"me":""}">${me?"":`<div class="ava mini" data-real="${m.tg_id}">${face(m.look,m.nick)}</div>`}<div class="bub">${me?"":`<b data-ment="${esc(m.nick)}">${esc(m.nick)}</b>`}${t}<small>${new Date(m.created_at).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div></div>`; }
+function msgHtml(m){ const me=String(m.tg_id)===String(cloud.id), t=esc(m.text).replace(/@([^\s,.:!?]{2,16})/g,(a,n)=>`<span class="ment ${n===S.player.nick?"mine":""}">@${n}</span>`); if(m.sys) return `<div class="cSys">${t}</div>`; return `<div class="cMsg ${me?"me":""}">${me?"":`<div class="ava mini" data-real="${m.tg_id}">${face({...m.look,uid:m.tg_id},m.nick)}</div>`}<div class="bub">${me?"":`<b data-ment="${esc(m.nick)}">${esc(m.nick)}</b>`}${t}<small>${new Date(m.created_at).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div></div>`; }
 async function chatPull(){
   if(!cloud.on||cloud.pulling) return; cloud.pulling=true;
   try{ const n=(await api("chat",{after:cloud.last})).messages||[]; if(!n.length) return; const l=$("chatList"), near=l&&l.scrollHeight-l.scrollTop-l.clientHeight<90, fresh=n.filter(m=>!cloud.chat.some(x=>x.id===m.id));
@@ -2345,8 +2346,13 @@ drawAdmin=function(){
     <label class="muted" for="aRep">Репутация</label><input class="txt" id="aRep" type="number" value="50"><button class="btn" data-a="rep">Установить</button>
     <div class="carActs"><button class="btn" data-a="police1">В полицию</button><button class="btn" data-a="police0">Из полиции</button><button class="btn" data-a="release">Освободить</button><button class="btn" data-a="mute">Мут 60 мин</button><button class="btn" data-a="unmute">Снять мут</button><button class="btn red" data-a="ban">${x.banned?"Разбанить":"Забанить"}</button></div>`:""}</div>
    <div class="card"><h3>Чат</h3>${cloud.chat.slice(-30).map(m=>`<div class="row"><span><b>${esc(m.nick)}</b>: ${esc(m.text)}</span><button class="btn small" data-a="del" data-t="${m.id}">Удалить</button></div>`).join("")||'<p class="muted">Сообщений нет.</p>'}</div>
+   <div class="card"><h3>Telegram-аккаунты игроков</h3><button class="btn" data-acc="load">Показать всех</button><div id="aAcc"></div></div>
    <div class="card"><h3>Журнал</h3><button class="btn" data-a="log">Показать журнал</button><div id="aLog"></div></div>`;
 };
+const accRow=x=>{ const on=x.last_seen&&Date.now()-new Date(x.last_seen).getTime()<120000; return `<div class="repItem"><strong>${esc(x.nick)}</strong>${x.banned?' <span class="no">бан</span>':""} <span class="${on?"ok":"muted"}">${on?"в сети":x.last_seen?new Date(x.last_seen).toLocaleString("ru-RU"):"не заходил"}</span><br><span class="muted">ID ${x.tg_id}</span><br>${x.tg?`<a class="tgLink" href="https://t.me/${esc(x.tg)}" target="_blank" rel="noopener noreferrer" data-tg="${esc(x.tg)}">@${esc(x.tg)}</a>`:'<span class="muted">Нет username. Если зашёл до обновления, он появится после входа.</span>'}</div>`; };
+function accDraw(){ const box=$("aAccList"); if(!box) return; const q=($("aAccFind").value||"").trim().toLowerCase().replace(/^@/,""), l=(cloud.accounts||[]).filter(x=>!q||x.nick.toLowerCase().includes(q)||x.tg.toLowerCase().includes(q)||String(x.tg_id).includes(q)); box.innerHTML=l.slice(0,300).map(accRow).join("")||'<p class="muted">Никого не нашлось.</p>'; }
+$("adminView").addEventListener("input",e=>{ if(e.target.id==="aAccFind") accDraw(); });
+$("adminView").addEventListener("click",async e=>{ const b=e.target.closest("[data-acc]"); if(!b) return; b.disabled=true; try{ cloud.accounts=(await api("admin_accounts")).list||[]; $("aAcc").innerHTML=`<p class="muted">Всего аккаунтов: ${cloud.accounts.length}. С username: ${cloud.accounts.filter(x=>x.tg).length}.</p><input id="aAccFind" style="width:100%;margin:8px 0" placeholder="Поиск: имя, @username или ID" aria-label="Поиск аккаунта"><div id="aAccList"></div>`; accDraw(); }catch(er){ toast(`Не удалось загрузить (${errText(er)}).`); } b.disabled=false; });
 $("adminView").addEventListener("change",e=>{ if(e.target.id==="aPick"){ aSel=e.target.value; drawAdmin(); } });
 $("adminView").addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]"); if(!b) return; e.stopImmediatePropagation(); const a=b.dataset.a, t=b.dataset.t, id=aSel, cmd=c=>api("admin_cmd",{tg_id:id,cmd:c});
