@@ -2013,7 +2013,7 @@ function policeArrives(a){
   if(s.roof&&(s.roof===myGang())&&Math.random()*100<S.gangs[s.roof].inf){ notify("info","Крыша отбила проверку",b.name,a.id); return; }
   const bad=violations(s); S.stats.checksOnMe++; S.world.checks++;
   if(bad.length){
-    let fine=fineCut(b.price*FINE*bad.length); if(S.lawyer){ fine/=2; S.lawyer=false; } S.money=Math.max(0,S.money-fine); S.stats.fines+=fine; S.world.fines+=fine; S.lastFine={sum:fine,name:b.name};
+    let fine=fineCut(baseOf(b)*FINE*bad.length); if(S.lawyer){ fine/=2; S.lawyer=false; } S.money=Math.max(0,S.money-fine); S.stats.fines+=fine; S.world.fines+=fine; S.lastFine={sum:fine,name:b.name};
     renewAll(a.id);
     news("police",`${place(b)}: штраф хозяину`,`${S.player.nick}: нарушений ${bad.length}, штраф ${rub(fine)}. `);
     notify("bad","Штраф по итогам проверки",`${b.name}: -${rub(fine)}.`,a.id);
