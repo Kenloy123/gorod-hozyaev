@@ -627,7 +627,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 129.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 130.</p>
     </div>
   </section>
 </div>
@@ -2050,6 +2050,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["130","6 ноября 2026",["Обновления теперь загружаются быстрее после перезапуска игры."]],
  ["129","6 ноября 2026",["Новые цены на фоны и рамки витрины: от 50 000 ₽ до 1 000 000 000 ₽."]],
  ["128","6 ноября 2026",["Номер машины снова виден в витрине, в том числе в профилях других игроков."]],
  ["127","6 ноября 2026",["Витрину с персонажем и машиной теперь можно украшать: в Магазине одежды появились фоны и рамки витрины."]],
@@ -2138,8 +2139,8 @@ document.addEventListener("click",e=>{ const g=e.target.closest&&e.target.closes
 function drawUpdates(){ $("updatesView").innerHTML=`<h2>Что нового</h2><button class="btn" id="updPaper">Открыть газету сезона</button>${UPDATES.map(([v,d,l])=>`<div class="card"><h3>Версия ${v}</h3><p class="muted">${d}</p><ul class="updList">${l.map(x=>`<li>${x}</li>`).join("")}</ul></div>`).join("")}`; }
 $("updatesView").addEventListener("click",e=>{ if(e.target.id==="updPaper") showNews(); });
 async function closeNow(){ if(typeof cloud==="undefined"||cloud.closed) return; try{ await cloudSave(); }catch{} cloud.closed=true; persist(); stopMusic(); $("closedGate").hidden=false; }
-async function reloadNow(){ if(cloud.closed) return; try{ await cloudSave(); }catch{} cloud.closed=true; persist(); stopMusic(); $("reloadGate").hidden=false; }
-$("reloadGo").addEventListener("click",()=>{ try{ if(Telegram.WebApp.initData) Telegram.WebApp.close(); }catch{} setTimeout(()=>location.reload(),400); });
+async function reloadNow(){ if(cloud.closed) return; try{ await cloudSave(); }catch{} cloud.closed=true; persist(); stopMusic(); $("reloadGate").hidden=false; fetch(location.href.split("#")[0],{cache:"reload"}).catch(()=>{}); }
+$("reloadGo").addEventListener("click",async()=>{ try{ await fetch(location.href.split("#")[0],{cache:"reload"}); }catch{} try{ if(Telegram.WebApp.initData) Telegram.WebApp.close(); }catch{} setTimeout(()=>location.reload(),400); });
 function closedCheck(){ fetch(`status.json?t=${Date.now()}`,{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{ if(!d) return; if(cloud.reloadId==null) cloud.reloadId=d.reload||0; else if((d.reload||0)!==cloud.reloadId&&!d.closed){ reloadNow(); return; } if(d.closed) closeNow(); else if(cloud.closed) location.reload(); else if(d.notice&&d.notice.id&&cloud.admin&&cloud.on&&S.player&&S.openNotice!==d.notice.id){ S.openNotice=d.notice.id; persist(); cloudSave(); api("admin_notice",{text:d.notice.text}).then(()=>toast("Рассылка отправлена всем")).catch(er=>{ S.openNotice=""; toast(`Рассылка не ушла (${errText(er)}).`); }); } }).catch(()=>{}); }
 setTimeout(()=>{ closedCheck(); setInterval(closedCheck,30000); },1500);
 const AWAY_MAX=8*3600000, AWAY_MIN=120000;
