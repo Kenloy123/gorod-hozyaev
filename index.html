@@ -627,7 +627,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 130.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия 131.</p>
     </div>
   </section>
 </div>
@@ -2050,6 +2050,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["131","6 ноября 2026",["В панели разработчика уровень можно выдавать до 200."]],
  ["130","6 ноября 2026",["Обновления теперь загружаются быстрее после перезапуска игры."]],
  ["129","6 ноября 2026",["Новые цены на фоны и рамки витрины: от 50 000 ₽ до 1 000 000 000 ₽."]],
  ["128","6 ноября 2026",["Номер машины снова виден в витрине, в том числе в профилях других игроков."]],
@@ -2682,7 +2683,7 @@ drawAdmin=function(){
    <div class="card"><h3>Игроки (${P.length})</h3><div class="alertActions"><input class="txt" id="aFind" placeholder="Поиск: ник или ID" aria-label="Поиск игрока"><button class="btn" data-a="find">Найти</button></div><select id="aPick" aria-label="Игрок"><option value="">Выбери игрока</option>${P.map(p=>`<option value="${p.tg_id}" ${String(p.tg_id)===String(aSel)?"selected":""}>${esc(p.nick)} · ${rub(p.capital)}</option>`).join("")}</select>
    ${x?`<div class="kv"><span>ID</span><b>${x.tg_id}</b><span>Банда</span><b>${x.gang||"нет"}</b><span>Ранг</span><b>${x.grole||"нет"}</b><span>Фракция</span><b>${x.faction||"нет"}</b><span>Варны</span><b>${x.warns||0}</b><span>Бан до</span><b>${x.ban_until&&new Date(x.ban_until)>new Date()?new Date(x.ban_until).toLocaleString("ru-RU"):"нет"}</b></div><p class="muted">ID: ${idCopy(x.tg_id)}</p><label class="muted" for="aMsg">Сообщение игроку или причина</label><input class="txt" id="aMsg" maxlength="300" placeholder="Текст придёт через бота"><div class="alertActions"><button class="btn" data-a="msg">Написать</button><button class="btn" data-a="warn">Выдать варн</button></div><label class="muted" for="aHours">Временный бан, часов (1–24)</label><div class="alertActions"><input class="txt" id="aHours" type="number" min="1" max="24" value="1"><button class="btn red" data-a="tban">Забанить на время</button></div>
     <label class="muted" for="aPTitle">Титул игрока (пусто — убрать)</label><input class="txt" id="aPTitle" maxlength="24" value="${esc(x.title||"")}" placeholder="Например: Легенда села"><button class="btn" data-a="ptitle">Выдать титул</button>${cloud.helper?"":'<label class="muted">Галочка и роль. Помощнику нужно перезапустить игру.</label><div class="choices"><button class="btn small" data-a="badge" data-v="gold">Золотая</button> <button class="btn small" data-a="badge" data-v="red">Красная</button> <button class="btn small" data-a="badge" data-v="helper">Помощник</button> <button class="btn small" data-a="badge" data-v="">Снять</button></div>'}<label class="muted" for="aMoney">Деньги</label><input class="txt" id="aMoney" type="number" value="100000"><div class="alertActions"><button class="btn" data-a="mAdd">Добавить</button><button class="btn" data-a="mSet">Установить</button></div>
-    <label class="muted" for="aLevel">Уровень</label><input class="txt" id="aLevel" type="number" min="1" max="50" value="2"><button class="btn" data-a="level">Установить уровень</button>
+    <label class="muted" for="aLevel">Уровень</label><input class="txt" id="aLevel" type="number" min="1" max="200" value="2"><button class="btn" data-a="level">Установить уровень</button>
     <label class="muted" for="aRole">Ранг в банде</label><select id="aRole">${RANKS_G.map(r=>`<option value="${r[0]}">${r[1]}</option>`).join("")}</select><button class="btn" data-a="role">Установить ранг</button>
     <label class="muted" for="aG">Банда</label><select id="aG"><option value="">Без банды</option>${Object.entries(GANGS).map(([k,g])=>`<option value="${k}">${g.name}</option>`).join("")}</select><button class="btn" data-a="setgang">Перевести</button>
     <label class="muted" for="aCar">Транспорт</label><select id="aCar">${CARS.map(c=>`<option value="${c[0]}">${c[1]}</option>`).join("")}</select><button class="btn" data-a="givecar">Выдать</button>
@@ -2743,7 +2744,7 @@ $("adminView").addEventListener("click",async e=>{
     if(a==="boom"){ Object.keys(S.market).forEach(k=>S.market[k]=1.3); }
     if(a==="mAdd") await cmd({money:+$("aMoney").value});
     if(a==="mSet") await cmd({money:+$("aMoney").value,mode:"set"});
-    if(a==="level") await cmd({level:Math.min(50,Math.max(1,+$("aLevel").value||1))});
+    if(a==="level") await cmd({level:Math.min(MAX_LEVEL,Math.max(1,+$("aLevel").value||1))});
     if(a==="role") await cmd({role:$("aRole").value});
     if(a==="setgang") await cmd({gang:$("aG").value||null});
     if(a==="givecar") await cmd({car:$("aCar").value});
