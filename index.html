@@ -1074,9 +1074,9 @@ function liveSheet(){
   const b=BY[openId], s=S.biz[openId], now=Date.now();
   const d=$("docs");
   if(d){
-    if(!d.children.length) d.innerHTML=DOCS.map(([k,n])=>`<div class="row"><div>${n}<br><span id="ds_${k}"></span></div><div class="carActs docBtns"><button class="btn small" data-act="doc" data-doc="${k}" id="db_${k}"></button><button class="btn small main" data-act="doc8" data-doc="${k}" id="db8_${k}"></button></div></div>`).join("")+`<button class="btn" data-act="docAll8" id="dbAll8"></button>`;
+    if(!d.children.length) d.innerHTML=DOCS.map(([k,n])=>`<div class="row"><div>${n}<br><span id="ds_${k}"></span></div><div class="carActs docBtns"><button class="btn small main" data-act="doc8" data-doc="${k}" id="db8_${k}"></button></div></div>`).join("")+`<button class="btn" data-act="docAll8" id="dbAll8"></button>`;
     { const nc=$("nextCheck"); if(nc){ const l=Math.max(0,S.nextEvent-now); nc.textContent=`Следующая плановая проверка через ${l>=60000?Math.ceil(l/60000)+" мин":Math.ceil(l/1000)+" с"}.`; } }
-    DOCS.forEach(([k])=>{ const left=s.docs[k]-now, ok=left>0, a=$("ds_"+k); a.className=ok?"ok":"no"; a.textContent=ok?`В порядке ещё ${left>=3600000?`${Math.floor(left/3600000)} ч ${Math.ceil(left%3600000/60000)} мин`:left>=60000?Math.ceil(left/60000)+" мин":Math.ceil(left/1000)+" с"}`:"Нет документа"; const bt=$("db_"+k), wait=left>DOC_RENEW; bt.disabled=wait; bt.textContent=wait?"Рано продлевать":`10 мин: ${rub(docCost(b))}`; const b8=$("db8_"+k); b8.disabled=wait; b8.textContent=wait?"Рано продлевать":`8 часов: ${rub(docCost(b)*DOC_LONG_K)}`; }); { const all=$("dbAll8"), need=DOCS.filter(([k])=>s.docs[k]-now<=DOC_RENEW); if(all){ all.hidden=need.length<2; all.textContent=`Все на 8 часов: ${rub(need.length*docCost(b)*DOC_LONG_K)}`; } }
+    DOCS.forEach(([k])=>{ const left=s.docs[k]-now, ok=left>0, a=$("ds_"+k); a.className=ok?"ok":"no"; a.textContent=ok?`В порядке ещё ${left>=3600000?`${Math.floor(left/3600000)} ч ${Math.ceil(left%3600000/60000)} мин`:left>=60000?Math.ceil(left/60000)+" мин":Math.ceil(left/1000)+" с"}`:"Нет документа"; const wait=left>DOC_RENEW, b8=$("db8_"+k); b8.disabled=wait; b8.textContent=wait?"Рано продлевать":`8 часов: ${rub(docCost(b)*DOC_LONG_K)}`; }); { const all=$("dbAll8"), need=DOCS.filter(([k])=>s.docs[k]-now<=DOC_RENEW); if(all){ all.hidden=need.length<2; all.textContent=`Все на 8 часов: ${rub(need.length*docCost(b)*DOC_LONG_K)}`; } }
   }
   const i=$("inspectBtn");
   if(i){
@@ -1772,7 +1772,7 @@ const TUT=[
  ["Отработай 3 смены","Так копятся деньги на первый бизнес.",x=>x.shifts>=3,1500,"work"],
  ["Купи первый бизнес","Поезжай к точке и купи её. Она приносит доход каждую минуту.",x=>x.bought>=1,1500,"biz"],
  ["Найми сотрудника","Без персонала выручка почти вдвое меньше.",x=>x.hired>=1,1500,"own"],
- ["Следи за документами","Они действуют 10 минут или 8 часов. Без них на проверке будет штраф.",x=>x.docs>=1||x.bought>=1,1500,"own"],
+ ["Следи за документами","Они действуют 8 часов. Без них на проверке будет штраф.",x=>x.docs>=1||x.bought>=1,1500,"own"],
  ["Дойди до 2 уровня","Опыт дают смены, покупки и найм.",()=>levelOf(S.xp)>=2,2000,"work"]];
 function drawTut(){ const h=$("hint"); if(!h||!S) return; S.tut=S.tut||0;
   while(S.tut<TUT.length&&TUT[S.tut][2](S.stats)){ const t=TUT[S.tut]; S.money+=t[3]; S.tut++; sfx.coin(); notify("money","Задание выполнено",`${t[0]}: +${rub(t[3])}.`); drawHud(); }
@@ -1882,7 +1882,7 @@ const NEWS=[
  ["Соседи больше не прячутся","Видно, кто в городе, а кто нет. В профиле теперь аватарка и Telegram. Вещи продаются напрямую, по ID игрока."],
  ["Новые лица","При создании героя больше причёсок, лиц, бород, улыбок и примет. А лысина на макушке наконец заросла."],
  ["Бот не спит","Важные события придут в сообщения, даже если ты вышел из игры."]];
-const NEWS_ORDER=["Войти в игру можно только после «Старт» в боте.","Документы действуют 10 минут или 8 часов и не складываются.","Плановая проверка приходит раз в час.","Имя у каждого своё, мат запрещён.","В казино ставка до 25 000 ₽, между ставками 2 секунды.","Заметил неладное? Жми «Сообщить об ошибке»."];
+const NEWS_ORDER=["Войти в игру можно только после «Старт» в боте.","Документы действуют 8 часов и не складываются.","Плановая проверка приходит раз в час.","Имя у каждого своё, мат запрещён.","В казино ставка до 25 000 ₽, между ставками 2 секунды.","Заметил неладное? Жми «Сообщить об ошибке»."];
 function showNews(){ const b=$("news"); b.innerHTML=`<div class="newsWrap"><div class="gazette"><div class="paperHead"><strong>Вестник Кочубеевского</strong><span><i>Срочный выпуск</i><i>Цена: одна минута</i></span></div><h2>${NEWS_LEAD[0]}</h2><p class="paperLead">${NEWS_LEAD[1]}</p>${NEWS.map(([h,t])=>`<article><h3>${h}</h3><p>${t}</p></article>`).join("")}<div class="paperOrder"><h3>Постановление администрации</h3><ol>${NEWS_ORDER.map(x=>`<li>${x}</li>`).join("")}</ol></div></div><button class="btn main" id="newsOk">В город</button></div>`; b.scrollTop=0; b.hidden=false; }
 const BOT_URL="https://t.me/citymastersgame_bot?start=play";
 let gateUrl=BOT_URL;
@@ -1900,7 +1900,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
- ["88","5 ноября 2026",["Промокоды: «Ещё» → «Промокод»."]],
+ ["88","5 ноября 2026",["Документы теперь оформляются только на 8 часов.","Промокоды: «Ещё» → «Промокод»."]],
  ["87","5 ноября 2026",["Титулы видны всем: в чате, рейтинге, списке игроков и профилях."]],
  ["86","5 ноября 2026",["Титул топ-3 теперь виден в своём профиле и в шапке игры."]],
  ["85","5 ноября 2026",["24 новых бизнеса: от Ремонта обуви до Хлебозавода.","Коммуналка снижена до 20% дохода бизнесов."]],
@@ -1989,7 +1989,7 @@ function giveCar(id,to){
 function giveProp(id,to){ const p=everyone().find(x=>x.id===to); if(cloud.on&&String(to).startsWith("r")&&!giveProp.ok){ return api("prop_gift",{id,to:to.slice(1)}).then(()=>{ cloud.nicks[to]=p.name; giveProp.ok=true; giveProp(id,to); giveProp.ok=false; }).catch(er=>toast(`Не получилось передать (${errText(er)}).`)); } setOwner(id,to); notify("deal","Собственность передана",`${BY[id].name}: новый хозяин ${p.name}.`,id); showReport(dealPaper({b:BY[id],seller:"you",buyer:to,sum:0})); drawHud(); drawActive(); }
 
 /* Incoming alerts */
-function missingCost(a){ const b=BY[a.id]; return violations(S.biz[a.id]).length*docCost(b); }
+function missingCost(a){ const b=BY[a.id]; return violations(S.biz[a.id]).length*docCost(b)*DOC_LONG_K; }
 function drawAlert(){
   const a=S.alert, box=$("alertBox");
   const pl=$("alertPill"); if(!a){ cloud.alertHide=false; box.hidden=true; pl.hidden=true; return; }
@@ -2029,7 +2029,7 @@ $("alertBox").addEventListener("click", e=>{
   if(act==="fix"){
     const c=missingCost(a);
     if(S.money<c) return toast(`Нужно ${rub(c)}. Оформи самые важные документы вручную.`);
-    S.money-=c; const miss=violations(S.biz[a.id]); S.stats.docs+=miss.length; miss.forEach(([k])=>S.biz[a.id].docs[k]=Date.now()+DOC_LIFE);
+    S.money-=c; const miss=violations(S.biz[a.id]); S.stats.docs+=miss.length; miss.forEach(([k])=>S.biz[a.id].docs[k]=Date.now()+DOC_LONG);
     drawAlert(); drawHud(); liveSheet(); return;
   }
   if(act==="yes") iSold(a,a.sum);
@@ -2320,7 +2320,7 @@ const HELP=[
  ["С чего начать",["Сначала выйди на смену в разделе «Работа»: это первые деньги и опыт.","Накопи на свободную точку. Самые дешёвые стоят около 27 000 ₽.","Найми сотрудника, оформи документы и закупи товар.","Выбери банду или службу в полиции: это разные пути развития.","Чтобы открыть точку или организацию, сначала доедь до неё кнопкой «Поехать»."]],
  ["Работа и уровни",["Смена платит деньги и даёт опыт, а за каждую смену тратятся силы. Силы восстанавливаются сами.","Новые работы открываются с уровнем: всего 14 работ, с 1 по 25 уровень.","Всего 200 уровней и 20 званий, каждый следующий уровень сложнее. Посмотреть можно в «Ещё» → «Уровни»."]],
  ["Бизнесы",["Точка приносит прибыль каждую минуту. В строке «Доход» видна сумма в минуту. Вне игры она работает до 8 часов.","Прибыль — это выручка минус аренда, зарплаты и налог 6%.","Спрос меняется: иногда отрасль приносит больше, иногда меньше.","Запас товара тратится. Если он закончился, выручка сильно падает, поэтому закупай его вовремя.","Без сотрудников точка приносит почти вдвое меньше. Можно нанять до 3 человек: стажёр +12%, опытный +24%, профи +38%. Найм и увольнение платные, зарплата списывается каждую минуту.","Если денег нет и точка в минусе, сотрудники уходят по одному."]],
- ["Как улучшать бизнес",["Открой свою точку: внизу есть три улучшения.","Их от 5 до 10 уровней, чем дороже бизнес, тем больше. Полная прокачка удваивает выручку.","Кнопка действия даёт разовую прибыль и работает раз в 90 секунд.","Документ действует 10 минут или 8 часов. Продлить его можно только в последнюю минуту или после окончания срока. Без документа на проверке будет штраф."]],
+ ["Как улучшать бизнес",["Открой свою точку: внизу есть три улучшения.","Их от 5 до 10 уровней, чем дороже бизнес, тем больше. Полная прокачка удваивает выручку.","Кнопка действия даёт разовую прибыль и работает раз в 90 секунд.","Документ действует 8 часов. Продлить его можно только в последнюю минуту или после окончания срока. Без документа на проверке будет штраф."]],
  ["Доход вне игры",["Бизнесы работают, пока тебя нет, но не больше 8 часов.","Кончился товар, и выручка падает. Сразу при входе списывается 20% коммуналки."]],
  ["Коммуналка",["Каждый час игры списывается 20% дохода всех бизнесов за этот час.","Если денег не хватило, приходит предупреждение и копится долг. Погасишь долг в «Ещё» → «Коммуналка», предупреждения снимутся.","После 5 предупреждений один случайный бизнес слетит, а всем придёт сообщение от бота."]],
  ["Покупка, продажа и торг",["Свободную точку можно купить сразу по цене города.","Точку игрока можно только выкупить через торг: нажми «Торговаться с хозяином», а переписка будет в «Ещё» → «Сделки».","Городу точку можно продать за 70% цены. Тогда она станет свободной для всех.","Точка принадлежит только одному игроку, и всем на карте виден её хозяин.","Один игрок может иметь только 5 бизнесов. Чтобы купить шестой, сначала продай один. Районы, школы и клуб Zolton в этот лимит не входят.","Клуб Zolton и школы продаются только на аукционе."]],
