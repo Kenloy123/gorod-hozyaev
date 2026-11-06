@@ -2452,7 +2452,10 @@ async function cloudInit(){
     botGate(); if(S.player&&d.nickOk===false) askNick(); S.tg=d.id; S.season=2; applyProps(d.props); applyBoss(); awayPay(S.savedAt); cloudSave().then(migrateProps); platesLoad().catch(()=>{}); cloudPoll(); chatPull(); setInterval(()=>{ if(document.hidden) return; cloud.tick=(cloud.tick||0)+1; if(cloud.tick%4===0) cloudPoll(); },5000); document.addEventListener("visibilitychange",()=>{ if(document.hidden) cloudSave(); });
   }catch(e){ if(e.code==="banned"){ $("menu").innerHTML='<div class="introBody"><h2>Доступ закрыт</h2><p>Аккаунт заблокирован.</p></div>'; } else toast("Сервер недоступен, прогресс сохранится на устройстве."); }
 }
-async function cloudSave(){ if(!cloud.on||!S.player||cloud.closed) return; cloud.lastSave=Date.now(); try{ await api("save",{save:S,look:myLook(),gang:S.player.gang,grole:S.player.grole,capital:Math.round(capital())}); }catch{} }
+async function cloudSave(){ if(!cloud.on||!S.player||cloud.closed) return; cloud.lastSave=Date.now(); try{ await api("save",{stockAt:stockAtNext(),save:S,look:myLook(),gang:S.player.gang,grole:S.player.grole,capital:Math.round(capital())}); }catch{} }
+const STOCK_LOW=15, stockAtNext=()=>{ const l=BIZ.map(b=>S.biz[b.id]).filter(q=>q&&q.owner==="you"&&q.stock>STOCK_LOW).map(q=>Date.now()+(q.stock-STOCK_LOW)*STOCK_MS); return l.length?Math.min(...l):null; };
+function stockWarn(){ if(!S||!S.player) return; const low=[]; BIZ.forEach(b=>{ const q=S.biz[b.id]; if(!q||q.owner!=="you") return; if(q.stock>STOCK_LOW){ q.lowW=0; return; } if(!q.lowW){ q.lowW=1; low.push(b); } }); if(low.length===1) notify("bad","Запасы заканчиваются",`${low[0].name}: осталось ${Math.round(S.biz[low[0].id].stock)}%. Пополни запасы, иначе доход упадёт.`,low[0].id); else if(low.length) notify("bad","Запасы заканчиваются",`В ${low.length} точках осталось меньше ${STOCK_LOW}%. Пополни запасы, иначе доход упадёт.`); }
+setInterval(stockWarn,30000);
 let pollBusy=false;
 async function cloudPoll(){ if(pollBusy) return; pollBusy=true; try{ await cloudPollRun(); }finally{ pollBusy=false; } }
 async function cloudPollRun(){
