@@ -1,0 +1,55 @@
+name: Таймер обновы
+
+on:
+  workflow_dispatch:
+
+jobs:
+  countdown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+    steps:
+      - name: Запустить таймер в канале
+        shell: python
+        run: |
+          import json, os, time, urllib.error, urllib.parse, urllib.request
+          from datetime import datetime, timedelta, timezone
+
+          TOKEN = os.environ["TG_BOT_TOKEN"].strip()
+          CHANNEL = "@gorodhoz"
+          MSK = timezone(timedelta(hours=3))
+          TARGET = datetime(2026, 11, 6, 17, 0, tzinfo=MSK)
+
+          def api(method, **params):
+              data = urllib.parse.urlencode(params).encode()
+              url = f"https://api.telegram.org/bot{TOKEN}/{method}"
+              try:
+                  with urllib.request.urlopen(url, data, timeout=20) as r:
+                      return json.load(r)
+              except urllib.error.HTTPError as e:
+                  return json.load(e)
+
+          def text():
+              left = int((TARGET - datetime.now(MSK)).total_seconds())
+              if left <= 0:
+                  return "🔥 Обнова выходит!"
+              minutes = (left + 59) // 60
+              hours, mins = divmod(minutes, 60)
+              when = f"{hours} ч {mins} мин" if hours else f"{mins} мин"
+              return f"⏳ До обновы осталось: {when}\n\nВыход сегодня в 17:00 по МСК"
+
+          sent = api("sendMessage", chat_id=CHANNEL, text=text())
+          if not sent.get("ok"):
+              raise SystemExit(f"Не удалось отправить пост: {sent.get('description')}")
+          mid = sent["result"]["message_id"]
+
+          while True:
+              done = datetime.now(MSK) >= TARGET
+              if done:
+                  api("editMessageText", chat_id=CHANNEL, message_id=mid, text=text())
+                  break
+              time.sleep(min(60, max(1, (TARGET - datetime.now(MSK)).total_seconds())))
+              r = api("editMessageText", chat_id=CHANNEL, message_id=mid, text=text())
+              if not r.get("ok"):
+                  print("edit:", r.get("description"))
