@@ -810,7 +810,7 @@ const SHOES=[["#3D3A36","k"],["#E6E2D8","k"],["#14151A","k"],["#B3372E","k"],["#
 const BELTS=[null,["#4A2F1C","#B8B2A4"],["#14151A","#B8B2A4"],["#14151A","#D8B24A"],["#7A1D22","#D8B24A"],["#D8B24A","#FFF1B8"]];
 const GLOVES=[null,"#14151A","#5A3B24","#E6E2D8","#D8B24A"];
 const BAGS=[null,["c","#4A2F1C"],["c","#14151A"],["p","#2F3C52"],["p","#7A1D22"],["c","#D8B24A"],["b","#14151A"]];
-const photoOk=u=>typeof u==="string"&&/^https:\/\/(t\.me\/i\/userpic\/|[a-z0-9.-]+\.telesco\.pe\/)/.test(u);
+const photoOk=u=>typeof u==="string"&&!/\.svg(\?|$)/i.test(u)&&/^https:\/\/(t\.me\/i\/userpic\/|[a-z0-9.-]+\.telesco\.pe\/)/.test(u);
 const myPhoto=()=>{ try{ return Telegram.WebApp.initDataUnsafe.user.photo_url||""; }catch{ return ""; } };
 const myTg=()=>{ try{ return Telegram.WebApp.initDataUnsafe.user.username||""; }catch{ return ""; } };
 const myLook=()=>({...S.player.look,photo:myPhoto(),tg:myTg(),uid:(typeof cloud!=="undefined"&&cloud.id)||S.tg||null});
