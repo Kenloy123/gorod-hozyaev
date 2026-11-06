@@ -1903,7 +1903,7 @@ function startRoute(id){ { const L=CIVIC.filter(c=>c.fn===id); if(L.length){ L.p
 function endRoute(){ if(trip){ clearInterval(trip.timer); if(trip.at&&!atPlace(trip.id)) S.pos=trip.at; trip=null; } routeLine=null; $("routeBar").hidden=true; drawMap(); }
 $("routeBar").addEventListener("click",e=>{ if(e.target.id==="routeClose") endRoute(); });
 /* Economy */
-const STOCK_MS=15000;
+const STOCK_MS=36000;
 const TIER=[null,{n:"Точка",rent:.3,tax:.06,staff:1},{n:"Малый бизнес",rent:.3,tax:.06,staff:2},{n:"Средний бизнес",rent:.32,tax:.07,staff:3},{n:"Крупный бизнес",rent:.34,tax:.08,staff:4},{n:"Промышленный гигант",rent:.36,tax:.1,staff:5}];
 const tierOf=b=>TIER[b.tier||1], staffMax=b=>tierOf(b).staff;
 function demand(b){ return S.market[b.group]||1; }
@@ -1930,7 +1930,7 @@ function econHtml(b){
    <div class="card"><h3>Персонал (${team.length} из ${staffMax(b)})</h3>${team.length?"":'<p class="no">Без сотрудников точка приносит почти вдвое меньше.</p>'}${team.map((w,i)=>`<div class="staff"><div><strong>${esc(w.n)}, ${esc(w.role)}</strong><br><span style="color:${SKILL[w.skill][3]}">${SKILL[w.skill][0]}</span> <span class="muted">· ${rub(wageOf(b,w))}/мин · +${Math.round(SKILL[w.skill][2]*100)}% к выручке</span></div><button class="btn small" data-act="fire" data-i="${i}">Уволить: ${rub(fireFee(b,w))}</button></div>`).join("")}
    <h3>Кандидаты</h3><p class="muted">Найм платный: подбор, оформление и обучение. Список обновится через ${Math.ceil((cd.at-Date.now())/60000)} мин.</p>${cd.list.map((w,i)=>`<div class="staff"><div><strong>${esc(w.n)}, ${esc(w.role)}</strong><br><span style="color:${SKILL[w.skill][3]}">${SKILL[w.skill][0]}</span> <span class="muted">· ${rub(wageOf(b,w))}/мин · +${Math.round(SKILL[w.skill][2]*100)}% к выручке</span></div><button class="btn small main" data-act="hire" data-i="${i}">Нанять: ${rub(hireFee(b,w))}</button></div>`).join("")||'<p class="muted">Подходящих кандидатов пока нет.</p>'}</div>`;
 }
-function stockCost(b){ const s=S.biz[b.id]; return Math.round(b.inc*2.2*(100-s.stock)/100); }
+function stockCost(b){ const s=S.biz[b.id]; return Math.round(b.inc*5.28*(100-s.stock)/100); }
 function marketTick(){
   Object.keys(S.market).forEach(k=>{ S.market[k]=Math.max(.65,Math.min(1.35,S.market[k]+rnd(-.08,.08))); });
   const k=pick(Object.keys(S.market)), N={shop:"магазины",food:"кафе и закусочные",auto:"автобизнес",med:"медицина",beauty:"салоны",hotel:"гостиницы",mall:"торговые центры",service:"услуги"};
