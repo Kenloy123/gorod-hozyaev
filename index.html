@@ -1197,7 +1197,7 @@ $("sheet").addEventListener("click", e => {
   if((act==="buy"||act==="botbuy")&&!canOwn(b)) return toast(`Сначала купи жильё: ${CITY_NAME[cityOf(b)]}. Открой «Ещё» → «Города».`);
   if(act==="close") return closeSheet();
   if(act==="stock"){ const c=stockCost(b); if(S.money<c) return toast(`На закупку нужно ${rub(c)}.`); S.money-=c; s.stock=100; sfx.coin(); }
-  if(act==="hire"){ const i=+el.dataset.i, w=S.cand[id].list[i]; if(s.team.length>=staffMax(b)) return toast("Штат заполнен."); const f=hireFee(b,w); if(S.money<f) return toast(`На найм нужно ${rub(f)}.`); S.money-=f; s.team.push(w); S.cand[id].list.splice(i,1); S.stats.hired++; addXp(15); sfx.coin(); notify("money","Сотрудник нанят",`${w.n}: ${w.role}, ${b.name}.`,id); }
+  if(act==="hire"){ const i=+el.dataset.i, w=S.cand[id].list[i], hw=Math.ceil((window.hireNext-Date.now())/1000); if(hw>0) return toast(`Следующий найм через ${hw} с.`); if(s.team.length>=staffMax(b)) return toast("Штат заполнен."); const f=hireFee(b,w); if(S.money<f) return toast(`На найм нужно ${rub(f)}.`); window.hireNext=Date.now()+3000; S.money-=f; s.team.push(w); S.cand[id].list.splice(i,1); S.stats.hired++; addXp(15); sfx.coin(); notify("money","Сотрудник нанят",`${w.n}: ${w.role}, ${b.name}.`,id); }
   if(act==="fire"){ const i=+el.dataset.i, w=s.team[i], f=fireFee(b,w); if(S.money<f) return toast(`На выходное пособие нужно ${rub(f)}.`); S.money-=f; s.team.splice(i,1); sfx.coin(); }
   if(act==="gift") return pickPlayer(`Подарить: ${b.name}`,to=>{ closeSheet(); giveProp(id,to); });
   if(act==="racket"){ doRacket(b); drawHud(); return; }
