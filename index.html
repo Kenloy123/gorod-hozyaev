@@ -526,6 +526,7 @@ nav button { filter: none; }
 .tgLetter { display: grid; place-items: center; width: 100%; height: 100%; background: #262833; color: var(--lamp); font: 700 16px/1 Oswald, sans-serif; }
 .pod .tgLetter { font-size: 30px; } #hudAvatar .tgLetter { font-size: 22px; }
 .tgLink { display: block; margin-top: 6px; color: #6FB7E8; font-size: 14px; overflow-wrap: anywhere; } .tgLink.off { color: var(--muted, #9A9BA5); font-size: 13px; }
+#cine h1.krai{display:block;text-transform:uppercase;letter-spacing:.015em;line-height:1;text-shadow:0 .03em .5em #0009}#cine h1.krai span{display:block;white-space:nowrap}#cine h1.krai #cn_t1{font-size:11.6cqw}#cine h1.krai .k{font-size:21cqw;font-weight:700;line-height:.98;letter-spacing:.09em;color:var(--lamp)}#cine .line.big{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.015em;text-wrap:balance}
 </style>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>addEventListener("load",()=>{const t=window.Telegram&&Telegram.WebApp;if(t){t.ready();t.expand();try{t.setHeaderColor("#14151B");t.setBackgroundColor("#0D0E12");t.disableVerticalSwipes()}catch(e){}}});</script>
@@ -2875,13 +2876,13 @@ pinsToRoads();
 buildGraph(); drawAll(); applyOpts(); showMenu(); cloudInit();
 setInterval(()=>{ if(S&&typeof Object.getOwnPropertyDescriptor(S,"money")?.get!=="function") ledgerBind(); ledgerCtx="Событие в игре"; try{ staffPin(); tick(); staffPin(); }finally{ ledgerCtx=""; } },250);
 </script>
-<div id="cine" hidden><div class="stage" id="cn_stage">
+<script>addEventListener("DOMContentLoaded",()=>{ const f=()=>{ const t=document.getElementById("cn_t1"); if(!t||!t.offsetWidth) return; t.style.fontSize=""; const w=t.parentElement.clientWidth, a=t.scrollWidth; t.style.fontSize=Math.min(w*.14,parseFloat(getComputedStyle(t).fontSize)*w/a*.99)+"px"; }; f(); if(document.fonts&&document.fonts.ready) document.fonts.ready.then(f); addEventListener("resize",f); new MutationObserver(f).observe(document.getElementById("cine"),{attributes:true,attributeFilter:["hidden"]}); });</script><div id="cine" hidden><div class="stage" id="cn_stage">
   <div class="win" id="cn_win"><img id="cn_a" alt=""><img id="cn_b" alt=""><div class="police" id="cn_police"></div></div>
   <div class="say" id="cn_say" hidden><div class="who" id="cn_who"></div><div class="line" id="cn_line" aria-live="polite"></div></div>
   <div class="top"><button class="chip" id="cn_snd" type="button" hidden>Звук: вкл</button><button class="chip" id="cn_skip" type="button" hidden>Пропустить</button></div>
   <div class="layer title" id="cn_title">
     <div class="eyebrow">Электричка прибывает · Ночь</div>
-    <h1>Ставропольский край</h1>
+    <h1 class="krai"><span id="cn_t1">Ставропольский</span><span class="k">край</span></h1>
     <p class="lead">Ты возвращаешься домой. Здесь у всего есть цена.</p>
     <button class="btn" id="cn_go" type="button">Сойти с поезда</button>
   </div>
