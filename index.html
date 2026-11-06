@@ -693,12 +693,12 @@ admin:"В игре здесь можно договориться о давле�
 
 BIZ.forEach(b=>b.price*=3); DISTRICTS.forEach(d=>d.price*=4);
 const DISTRICT_BONUS = 1.2;
-function inside(x,y,poly){
-  const p=poly.split(" ").map(c=>c.split(",").map(Number)); let c=false;
+const polyCache=new Map(); function inside(x,y,poly){
+  let q=polyCache.get(poly); if(!q){ const pt=poly.split(" ").map(c=>c.split(",").map(Number)), xs=pt.map(a=>a[0]), ys=pt.map(a=>a[1]); q={pt,a:Math.min(...xs),b:Math.max(...xs),c:Math.min(...ys),d:Math.max(...ys)}; polyCache.set(poly,q); } if(x<q.a||x>q.b||y<q.c||y>q.d) return false; const p=q.pt; let c=false;
   for(let i=0,j=p.length-1;i<p.length;j=i++){ const [xi,yi]=p[i],[xj,yj]=p[j]; if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c; }
   return c;
 }
-const districtOf = b => DISTRICTS.find(d=>inside(b.x,b.y,d.poly));
+const districtOf = b => { if(b._dk===b.x+","+b.y) return b._d; b._dk=b.x+","+b.y; return b._d=DISTRICTS.find(d=>inside(b.x,b.y,d.poly)); };
 const bizIn = d => BIZ.filter(b=>districtOf(b)===d);
 const POLICE_LEVEL=2, MAX_LEVEL=200;
 const xpFor=l=>Math.ceil(40*Math.pow(l-1,2.3));
@@ -710,7 +710,7 @@ function districtAt(x,y){
   const py=y;
   return DISTRICTS.find(d=>inside(x,py,d.poly)) || DISTRICTS.slice().sort((a,b)=>Math.hypot(a.lx-x,a.ly-py)-Math.hypot(b.lx-x,b.ly-py))[0];
 }
-const roadMid = n => { const r=ROADS.find(x=>x[0]===n); return r?[r[2][Math.floor(r[2].length/4)*2],r[2][Math.floor(r[2].length/4)*2+1]]:null; };
+const roadFirst=new Map(); ROADS.forEach(r=>{ if(!roadFirst.has(r[0])) roadFirst.set(r[0],r); }); const roadMid = n => { const r=roadFirst.get(n); return r?[r[2][Math.floor(r[2].length/4)*2],r[2][Math.floor(r[2].length/4)*2+1]]:null; };
 const streetsIn = d => STREET_NAMES.filter(n=>{const p=roadMid(n); return p&&districtAt(...p)===d;});
 const cityBack=b=>b.kind?Math.min(b.price,(S.biz[b.id]&&S.biz[b.id].paid)||b.oldPrice||b.price)*.7:b.price*.7;
 function districtCut(d){ const l=d._biz||(d._biz=bizIn(d)); return l.reduce((a,b)=>a+(S.biz[b.id].owner?bizNet(b)*10:0),0); }
@@ -2821,7 +2821,7 @@ document.querySelectorAll("nav button").forEach(b=>{ b.querySelector(".ic").inne
 $("sndBtn").innerHTML=ico("music"); $("bell").insertAdjacentHTML("afterbegin",ico("bell")); $("bell").firstChild.nextSibling&&$("bell").childNodes.forEach(n=>{ if(n.nodeType===3) n.remove(); }); $("menuBtn").innerHTML=ico("menu");
 $("mapTiles").innerHTML=Array.from({length:14*8},(_,i)=>{ const tx=i%8, ty=Math.floor(i/8); return `<img loading="lazy" alt="" src="maps/t/${tx}_${ty}.webp" style="left:${tx*512/40}%;top:${ty*512/67}%;width:${512/40}%;height:${ty<13?512/67:(6700-13*512)/67}%">`; }).join("");
 function setSheet(){ return Promise.resolve(true); } function sheetSync(){ }
-function pinsToRoads(){ const list=[...BIZ,...CIVIC].filter(b=>b.id!=="zolton"); list.forEach(b=>{ let bd=1e9,bq=null; ROADS.forEach(r=>{ const f=r[2]; for(let i=0;i+3<f.length;i+=2){ const ax=f[i],ay=f[i+1],dx=f[i+2]-ax,dy=f[i+3]-ay,l=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((b.x-ax)*dx+(b.y-ay)*dy)/l)),qx=ax+t*dx,qy=ay+t*dy,d=Math.hypot(b.x-qx,b.y-qy); if(d<bd){bd=d;bq=[qx,qy];} } }); if(bd>6){ const k=6/bd; b.x=bq[0]+(b.x-bq[0])*k; b.y=bq[1]+(b.y-bq[1])*k; } }); }
+function pinsToRoads(){ const list=[...BIZ,...CIVIC].filter(b=>b.id!=="zolton"); const G={}, CS=48, key=(a,b)=>a+":"+b; ROADS.forEach(r=>{ const f=r[2]; for(let i=0;i+3<f.length;i+=2){ const x0=Math.floor(Math.min(f[i],f[i+2])/CS), x1=Math.floor(Math.max(f[i],f[i+2])/CS), y0=Math.floor(Math.min(f[i+1],f[i+3])/CS), y1=Math.floor(Math.max(f[i+1],f[i+3])/CS); for(let a=x0;a<=x1;a++) for(let c=y0;c<=y1;c++) (G[key(a,c)]=G[key(a,c)]||[]).push([f[i],f[i+1],f[i+2],f[i+3]]); } }); list.forEach(b=>{ let bd=1e9,bq=null; const cx=Math.floor(b.x/CS), cy=Math.floor(b.y/CS); for(let a=cx-1;a<=cx+1;a++) for(let c=cy-1;c<=cy+1;c++) (G[key(a,c)]||[]).forEach(g=>{ const ax=g[0],ay=g[1],dx=g[2]-ax,dy=g[3]-ay,l=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((b.x-ax)*dx+(b.y-ay)*dy)/l)),qx=ax+t*dx,qy=ay+t*dy,d=Math.hypot(b.x-qx,b.y-qy); if(d<bd){bd=d;bq=[qx,qy];} }); if(bq&&bd>6){ const k=6/bd; b.x=bq[0]+(b.x-bq[0])*k; b.y=bq[1]+(b.y-bq[1])*k; } }); }
 { const da=drawAdmin; drawAdmin=function(){ da(); const h=$("adminView").querySelector("h2"); if(h){ h.insertAdjacentHTML("afterend",`<div class="card" id="aReports">${repHtml()}</div>`); repLoad(); } const c=$("aPick"); if(c&&aSel){ c.closest(".card").insertAdjacentHTML("afterend",`<div class="card" id="aAssets"><h3>Имущество игрока</h3><p class="muted">Загрузка…</p></div>`); assetsLoad(); } }; }
 async function assetsLoad(){ const id=aSel; try{ const [q,f]=await Promise.all([api("police_points"),api("profile",{tg_id:id})]); const box=$("aAssets"); if(!box||id!==aSel) return; const pts=(q.points||[]).filter(p=>String(p.owner_tg)===String(id)&&BY[p.id]), pub=f.player&&f.player.public||{}, cars=(pub.cars||[]).filter(c=>CAR_BY[c]);
   box.innerHTML=`<h3>Имущество игрока</h3><p class="muted">Изъятая точка станет свободной, а транспорт исчезнет у игрока. Всё записывается в журнал. Список транспорта обновляется, когда игрок сохраняется.</p><label class="muted" for="szWhy">Причина</label><input class="txt" id="szWhy" maxlength="120" placeholder="Например: получено обманом"><h3>Бизнесы и районы (${pts.length})</h3>${pts.map(p=>`<div class="row"><span>${esc(BY[p.id].name)}</span><button class="btn small red" data-sz="prop:${p.id}">Изъять</button></div>`).join("")||'<p class="muted">Нет точек.</p>'}<h3>Транспорт (${cars.length})</h3>${cars.map(c=>`<div class="row"><span>${esc(CAR_BY[c][1])}</span><button class="btn small red" data-sz="car:${c}">Изъять</button></div>`).join("")||'<p class="muted">Нет транспорта.</p>'}`; }catch(er){ const box=$("aAssets"); if(box) box.innerHTML=`<h3>Имущество игрока</h3><p class="no">Не удалось загрузить (${errText(er)}).</p>`; } }
