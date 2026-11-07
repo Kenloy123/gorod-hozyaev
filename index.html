@@ -1962,10 +1962,12 @@ function drawTut(){ const h=$("hint"); if(!h||!S) return; S.tut=S.tut||0;
 $("tutGo").addEventListener("click",()=>{ const k=TUT[S.tut]&&TUT[S.tut][4]; if(k==="work") return showTab("work"); const own=BIZ.find(b=>S.biz[b.id].owner==="you"); const free=BIZ.filter(b=>!S.biz[b.id].owner).sort((a,b)=>a.price-b.price)[0]||BIZ.slice().sort((a,b)=>a.price-b.price)[0]; const b=k==="own"?(own||free):free; showTab("map"); openBiz(b.id); });
 /* Search */
 function searchItems(q){
-  if(!q) return []; q=q.toLowerCase();
-  const objs=[...BIZ,...CIVIC,...DISTRICTS].filter(b=>b.name.toLowerCase().includes(q)).map(b=>({id:b.id,t:b.name,sub:b.kind?"Район":b.civic?"Организация":"Бизнес",icon:b.icon}));
-  const st=STREET_NAMES.filter(n=>n.toLowerCase().includes(q)&&ROADS.some(r=>r[0]===n)).map(n=>({street:n,t:n,sub:"Улица",icon:"🛣️"}));
-  return [...objs,...st].slice(0,8);
+  const N=x=>String(x||"").toLowerCase().replace(/ё/g,"е").replace(/[«»"]/g,"");
+  q=N(q).trim(); if(!q) return []; const words=q.split(/\s+/), pos=S.pos||[0,0];
+  const CN={koch:"кочубеевское",nev:"невинномысск",stav:"ставрополь",kaz:"казьминское",bars:"барсуковская",bal:"балахоновское"};
+  const objs=[...BIZ,...CIVIC,...DISTRICTS].filter(b=>b&&b.name&&BY[b.id]).map(b=>{ const d=b.kind?null:(typeof districtOf==="function"?districtOf(b):null), hay=N([b.name,b.street,d&&d.name,CN[typeof cityOf==="function"?cityOf(b):""]].join(" ")), nm=N(b.name); if(!words.every(w=>hay.includes(w))) return null; const x=b.x??b.lx, y=b.y??b.ly, o=S.biz[b.id]&&S.biz[b.id].owner; return {id:b.id,t:b.name,sub:(b.kind?"Район":b.civic?"Организация":"Бизнес")+(b.street?" · "+b.street:"")+(!b.civic&&!b.kind?(o?(o==="you"?" · твой":" · занят"):" · свободен"):""),icon:b.icon,s:(nm.startsWith(q)?0:nm.includes(q)?1:2)*1e7+Math.hypot(x-pos[0],y-pos[1])}; }).filter(Boolean).sort((a,b)=>a.s-b.s);
+  const st=STREET_NAMES.filter(n=>N(n).includes(q)&&ROADS.some(r=>r[0]===n)).slice(0,6).map(n=>({street:n,t:n,sub:"Улица",icon:"🛣️"}));
+  return [...st.slice(0,3),...objs.slice(0,40),...st.slice(3)];
 }
 $("mapQ").addEventListener("input",e=>{ const l=searchItems(e.target.value.trim()), r=$("mapRes"); r.hidden=!l.length; r.innerHTML=l.map(x=>`<button data-sid="${x.id||""}" data-sstreet="${x.street||""}"><span class="emoji">${x.icon}</span><span><strong>${esc(x.t)}</strong><br><span class="muted">${x.sub}</span></span></button>`).join(""); });
 $("mapRes").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; $("mapRes").hidden=true; $("mapQ").value=""; if(b.dataset.sstreet) return flyTo(b.dataset.sstreet); const o=BY[b.dataset.sid]; setZoom(5); focusAt(o.x??o.lx,o.y??o.ly); openBiz(o.id); });
@@ -2084,6 +2086,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["144","7 ноября 2026",["Поиск по карте находит все метки: по названию, улице, району и городу. Показывает до 40 результатов, ближайшие сверху, и пишет, свободен бизнес или занят."]],
  ["143","7 ноября 2026",["Карту теперь можно приближать и отдалять двумя пальцами, а двигать одним. На компьютере карту можно тащить мышкой."]],
  ["142","6 ноября 2026",["Игра реже обращается к серверу и работает стабильнее.","Сообщения в чате теперь хранятся 24 часа, журнал действий 30 дней."]],
  ["141","6 ноября 2026",["Сохранения стали намного меньше, игра меньше нагружает сервер и работает стабильнее."]],
