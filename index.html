@@ -2084,6 +2084,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["143","7 ноября 2026",["Карту теперь можно приближать и отдалять двумя пальцами, а двигать одним. На компьютере карту можно тащить мышкой."]],
  ["142","6 ноября 2026",["Игра реже обращается к серверу и работает стабильнее.","Сообщения в чате теперь хранятся 24 часа, журнал действий 30 дней."]],
  ["141","6 ноября 2026",["Сохранения стали намного меньше, игра меньше нагружает сервер и работает стабильнее."]],
  ["140","6 ноября 2026",["Купленный бизнес больше не пропадает на время из-за задержки сервера."]],
@@ -2388,6 +2389,18 @@ function setZoom(i){
   box.scrollLeft=cx*box.scrollWidth-box.clientWidth/2; box.scrollTop=cy*box.scrollHeight-box.clientHeight/2;
 }
 $("zoomCity").addEventListener("click",()=>{ setZoom(0); });
+(()=>{ const box=$("mapScroll"), pl=$("mapPlane"), zf=i=>Math.max(1,ZOOMS[i]*MAPW/1150); box.style.touchAction="pan-x pan-y"; let g=null;
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY), mid=t=>[(t[0].clientX+t[1].clientX)/2,(t[0].clientY+t[1].clientY)/2];
+  const zoomTo=(k,mx,my,sx,sy)=>{ const want=zf(zoomAt)*k; let best=zoomAt; ZOOMS.forEach((_,i)=>{ if(Math.abs(Math.log(zf(i)/want))<Math.abs(Math.log(zf(best)/want))) best=i; }); if(best===zoomAt&&k!==1&&Math.abs(Math.log(k))>.35) best=Math.max(0,Math.min(ZOOMS.length-1,zoomAt+(k>1?1:-1))); if(best===zoomAt) return; const fx=(sx+mx)/box.scrollWidth, fy=(sy+my)/box.scrollHeight; setZoom(best); box.scrollLeft=fx*box.scrollWidth-mx; box.scrollTop=fy*box.scrollHeight-my; };
+  box.addEventListener("touchstart",e=>{ if(e.touches.length!==2) return; e.preventDefault(); const r=box.getBoundingClientRect(), m=mid(e.touches); g={d:dist(e.touches)||1,mx:m[0]-r.left,my:m[1]-r.top,sx:box.scrollLeft,sy:box.scrollTop,k:1}; pl.style.transformOrigin=`${g.sx+g.mx}px ${g.sy+g.my}px`; },{passive:false});
+  box.addEventListener("touchmove",e=>{ if(!g) return; if(e.touches.length!==2) return; e.preventDefault(); g.k=Math.max(.2,Math.min(5,dist(e.touches)/g.d)); pl.style.transform=`scale(${g.k})`; },{passive:false});
+  const end=e=>{ if(!g||e.touches.length>=2) return; const q=g; g=null; pl.style.transform=""; pl.style.transformOrigin=""; zoomTo(q.k,q.mx,q.my,q.sx,q.sy); };
+  box.addEventListener("touchend",end); box.addEventListener("touchcancel",end);
+  let wAcc=0, wT=0; box.addEventListener("wheel",e=>{ if(!e.ctrlKey&&!e.metaKey) return; e.preventDefault(); wAcc+=e.deltaY; clearTimeout(wT); wT=setTimeout(()=>{ const r=box.getBoundingClientRect(), k=wAcc<0?2.2:1/2.2; wAcc=0; zoomTo(k,e.clientX-r.left,e.clientY-r.top,box.scrollLeft,box.scrollTop); },90); },{passive:false});
+  let dragM=null; box.addEventListener("mousedown",e=>{ if(e.button!==0) return; dragM={x:e.clientX,y:e.clientY,sx:box.scrollLeft,sy:box.scrollTop,moved:false}; });
+  addEventListener("mousemove",e=>{ if(!dragM) return; const dx=e.clientX-dragM.x, dy=e.clientY-dragM.y; if(Math.abs(dx)+Math.abs(dy)>4) dragM.moved=true; if(dragM.moved){ box.scrollLeft=dragM.sx-dx; box.scrollTop=dragM.sy-dy; } });
+  addEventListener("mouseup",()=>{ if(dragM&&dragM.moved){ const stop=ev=>{ ev.stopPropagation(); ev.preventDefault(); }; box.addEventListener("click",stop,{capture:true,once:true}); setTimeout(()=>box.removeEventListener("click",stop,{capture:true}),50); } dragM=null; });
+})();
 $("zoomIn").addEventListener("click",()=>setZoom(zoomAt+1));
 $("zoomOut").addEventListener("click",()=>setZoom(zoomAt-1));
 function flyTo(name){
