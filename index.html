@@ -633,7 +633,7 @@ nav button { filter: none; }
       <button class="btn" id="menuProfile" hidden>Мой профиль</button><button class="btn" id="menuSet" hidden>Настройки</button>
       <button class="btn" id="menuHelp">Как играть</button>
       <p class="muted" id="menuHelpText" hidden>Работай, покупай бизнесы и районы, выкупай их у других хозяев. Если хозяин отказал, вызови полицию: при нарушениях он заплатит штраф и станет сговорчивее. Держи свои документы в порядке, иначе штраф заплатишь ты.</p>
-      <p class="muted">Деньги в игре виртуальные. Версия 136.</p>
+      <p class="muted">Деньги в игре виртуальные. Версия <span id="verLbl">143</span>.</p>
     </div>
   </section>
 </div>
@@ -2164,6 +2164,7 @@ const UPDATES=[
  ["65","5 ноября 2026",["В донате появилась зарплата ×2 на 10 минут за 5 ⭐."]],
  ["64","5 ноября 2026",["Ускорение сил теперь ×4 на 30 минут за 5 ⭐, время идёт только в игре."]],
  ["62","5 ноября 2026",["Начался новый сезон: все начинают с нуля.","Открылась Балахоновка: четыре района и новые бизнесы.","Появился донат за звёзды.","Войти в игру можно только после «Старт» в боте.","Новые причёски, лица, бороды и приметы, исправлена лысина на макушке.","Маски банд стали временными.","Шансы хороших номеров снижены, у каждого номера появилась госка."]]];
+{ const e=document.getElementById("verLbl"); if(e) e.textContent=UPDATES[0][0]; }
 async function loadTeam(){ try{ cloud.team=(await api("team")).list||[]; if(!$("devsView").hidden) drawDevs(); if(!$("playersView").hidden) drawPlayers(); }catch{} }
 const lookOfP=x=>String(x.tg_id)===String(cloud.id)&&S&&S.player?S.player.look:x.look;
 const plAttr=x=>{ const l=lookOfP(x)||{}; return `class="player${PTHEMES[l.ptheme||0]?" themed":""}" style="${pStyle(l)}"`; };
