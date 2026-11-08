@@ -91,6 +91,10 @@ main { flex: 1; min-height: 0; position: relative; }
 .plot .emo { font-family: var(--emoji); }
 .nohit { pointer-events: none; }
 .stLabel, .rname, .pinName, .pinOwner { display: none; }
+#map.z6 .stLabel, #map.z7 .stLabel, #map.z6 .pinName, #map.z7 .pinName, #map.z6 .pinOwner, #map.z7 .pinOwner { display: block; }
+#map.z6 .cityName, #map.z7 .cityName, #map.z6 .dLabel, #map.z7 .dLabel { display: none; }
+#map.z5 .roadL { opacity: .55; } #map.z6 .zone, #map.z7 .zone { fill-opacity: .05; stroke-opacity: .12; } #map.z6 .roadL, #map.z7 .roadL { opacity: .16; }
+#mapHi { position: absolute; inset: 0; pointer-events: none; } #mapHi img { position: absolute; display: block; }
 #map.z5 .stLabel, #map.z4 .rname, #map.z5 .rname { display: block; }
 #map.z4 .pinName, #map.z5 .pinName, #map.z5 .pinOwner { display: block; }
 #map.z2 .cityName, #map.z3 .cityName, #map.z4 .cityName, #map.z5 .cityName { display: none; }
@@ -1058,7 +1062,7 @@ function mapBase(){
 }
 function mapRoads(){
   const minor=ROADS.filter(r=>!r[1]&&!r[3]).map(r=>wayPath(r[2])).join(""), main=ROADS.filter(r=>r[1]&&!r[3]&&!r[0].startsWith("трасса")).map(r=>wayPath(r[2])).join(""), hw=ROADS.filter(r=>r[0].startsWith("трасса")).map(r=>wayPath(r[2])).join("");
-  return `<g class="nohit" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  return `<g class="nohit roadL" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="${minor}" stroke="#0B0C10" stroke-width="3.6"/><path d="${main}" stroke="#0B0C10" stroke-width="6"/><path d="${hw}" stroke="#0B0C10" stroke-width="8"/>
     <path d="${minor}" stroke="#5F626D" stroke-width="2.2"/><path d="${main}" stroke="#A3A098" stroke-width="4.4"/><path d="${hw}" stroke="#8496BC" stroke-width="6"/>
     <path d="M13 343 L540 610" stroke="#4A4E59" stroke-width="1.8" stroke-dasharray="7 5"/></g>
@@ -1066,7 +1070,7 @@ function mapRoads(){
    ${ROADS.map((r,i)=>{ if(!LABELLED.has(i)) return ""; return `<text class="nohit rname" font-size="${r[1]?6:5}" fill="#D6CFBF" paint-order="stroke" stroke="#0D0E12" stroke-width="1.2"><textPath href="#w${i}" startOffset="28%">${r[0].replace("ул. ","")}</textPath></text>`}).join("")}
    `;
 }
-const ZOOMS = [.29, .7, 1.4, 3.4, 6.5, 10]; let zoomAt = 4;
+const ZOOMS = [.29, .7, 1.4, 3.4, 6.5, 10, 18, 32]; let zoomAt = 4;
 let baseCache=null, roadCache=null;
 function drawMap(){
   baseCache=baseCache||mapBase(); roadCache=roadCache||mapRoads();
@@ -1086,7 +1090,7 @@ function drawMap(){
   const fs=zoomAt>=4?11*U:0, tHalo=`paint-order="stroke" stroke="#0D0E12" stroke-width="${2.6*U}"`, pk=(10*U)/8.5, ck=(10*U)/7.5;
   const scaleAt=(x,y,k,inner)=>`<g transform="translate(${x} ${y}) scale(${k}) translate(${-x} ${-y})">${inner}</g>`;
   const pins=[...CIVIC.filter(c=>c.id!=="zolton"&&sheetOf(c.x)===curSheet).map(c=>({o:c,civic:1,x:c.x,y:c.y,mine:!!(c.id.startsWith("school")&&S.biz[c.id]&&S.biz[c.id].owner==="you")})),...BIZ.filter(b=>sheetOf(b.x)===curSheet).map(b=>({o:b,x:b.x,y:b.y,mine:S.biz[b.id].owner==="you"}))].sort((a,b)=>b.mine-a.mine);
-  const RAD=[70,50,34,30,22,0][zoomAt]*U, groups=[];
+  const RAD=([70,50,34,30,22,0][zoomAt]||0)*U, groups=[];
   pins.forEach(q=>{ const g=RAD?groups.find(g=>Math.hypot(g.x-q.x,g.y-q.y)<RAD):null; if(g){ g.list.push(q); g.x+=(q.x-g.x)/g.list.length; g.y+=(q.y-g.y)/g.list.length; } else groups.push({x:q.x,y:q.y,list:[q]}); });
   const boxes=[], fits=(x,y,w,h)=>{ if(boxes.some(b=>Math.abs(b[0]-x)<(b[2]+w)/2&&Math.abs(b[1]-y)<(b[3]+h)/2)) return false; boxes.push([x,y,w,h]); return true; };
   const zk=(10*U)/7.5;
@@ -1095,10 +1099,10 @@ function drawMap(){
     parts.push(`<g class="plot clu" data-x="${g.x}" data-y="${g.y}" tabindex="0" role="button" aria-label="Точек здесь: ${n}. Приблизить"><circle cx="${g.x}" cy="${g.y}" r="${r}" fill="#0D0E12" fill-opacity=".92" stroke="${col}" stroke-width="${2*U}"/><text x="${g.x}" y="${g.y+4.2*U}" text-anchor="middle" font-size="${12*U}" font-weight="700" fill="${col}">${n}</text></g>`); });
   groups.filter(g=>g.list.length===1).map(g=>g.list[0]).forEach(q=>{ const b=q.o, x=b.x, y=b.y;
     if(q.civic){ const dir=b.id.startsWith("school")&&S.biz[b.id]?S.biz[b.id].owner:null, col=dir?ownerColor(dir):b.civic==="org"?"#F2B640":"#C9C5BA";
-      parts.push(`<g class="plot civicPin" data-id="${b.id}" tabindex="0" role="button" aria-label="${b.name}${dir?", директор: "+ownerName(dir):""}">${scaleAt(x,y,ck,`<rect x="${x-7.5}" y="${y-7.5}" width="15" height="15" rx="3" fill="#0D0E12" stroke="${dir?col:b.civic==="org"?"#F2B640":"#8D93A5"}" stroke-width="1.6"/>${pinIcon(ICON_OF[b.fn||b.id]||ICON_OF[b.id.split("_")[0]]||"star",x,y,col)}`)}${fs&&fits(x,y+18*U,b.name.length*6*U,13*U)?`<text class="pinName" x="${x}" y="${y+21*U}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="${col}" ${tHalo}>${b.name}</text>${dir&&zoomAt===5?`<text class="pinOwner" x="${x}" y="${y+33*U}" text-anchor="middle" font-size="${10*U}" font-weight="700" fill="${col}" ${tHalo}>Директор: ${esc(ownerName(dir))}</text>`:""}`:""}</g>`);
+      parts.push(`<g class="plot civicPin" data-id="${b.id}" tabindex="0" role="button" aria-label="${b.name}${dir?", директор: "+ownerName(dir):""}">${scaleAt(x,y,ck,`<rect x="${x-7.5}" y="${y-7.5}" width="15" height="15" rx="3" fill="#0D0E12" stroke="${dir?col:b.civic==="org"?"#F2B640":"#8D93A5"}" stroke-width="1.6"/>${pinIcon(ICON_OF[b.fn||b.id]||ICON_OF[b.id.split("_")[0]]||"star",x,y,col)}`)}${fs&&fits(x,y+18*U,b.name.length*6*U,13*U)?`<text class="pinName" x="${x}" y="${y+21*U}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="${col}" ${tHalo}>${b.name}</text>${dir&&zoomAt>=5?`<text class="pinOwner" x="${x}" y="${y+33*U}" text-anchor="middle" font-size="${10*U}" font-weight="700" fill="${col}" ${tHalo}>Директор: ${esc(ownerName(dir))}</text>`:""}`:""}</g>`);
       return; }
     const s=S.biz[b.id], o=s.owner, free=!o, c=ownerColor(o), sub=free?`ур.${b.tier} · ${rub(b.price)}`:(s.inspectAt?"🚓 проверка":ownerName(o));
-    const label=fs&&fits(x,y+(zoomAt===5?23:18)*U,b.name.length*6*U,(zoomAt===5?25:13)*U);
+    const label=fs&&fits(x,y+(zoomAt>=5?23:18)*U,b.name.length*6*U,(zoomAt>=5?25:13)*U);
     parts.push(`<g class="plot" data-id="${b.id}" tabindex="0" role="button" aria-label="${b.name}, ${ownerName(o)}">${scaleAt(x,y,pk,`<circle cx="${x}" cy="${y}" r="8.5" fill="#0D0E12" stroke="${c}" stroke-width="2" ${free?'stroke-dasharray="4 2.5"':''}/>${pinIcon(ICON_OF[b.id],x,y,c)}`)}
       ${label?`<text class="pinName biz" x="${x}" y="${y+21*U}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#EEE7D8" ${tHalo}>${b.name}</text><text class="pinOwner" x="${x}" y="${y+33*U}" text-anchor="middle" font-size="${10*U}" font-weight="700" fill="${c}" ${tHalo}>${sub}</text>`:""}</g>`);
   });
@@ -2098,6 +2102,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["151","8 ноября 2026",["Тест новой карты: центр Ставрополя и Кочубеевское в 3D ночью. Приблизь карту до упора, чтобы увидеть дома, окна и фонари."]],
  ["150","8 ноября 2026",["Награды за уровни, задания и обучение уменьшены вдвое вместе с остальной экономикой."]],
  ["149","8 ноября 2026",["Биржа: разделы «Продаёт собственник», «Свободные бизнесы» и «Все бизнесы». Улучшения бизнеса теперь остаются при продаже и переходят новому хозяину.","Секретари в «Ещё»: сами пополняют запасы, продлевают документы и гасят коммуналку. Стоят 35% твоего дохода.","Спрос растёт, пока ты в игре, и падает, пока тебя нет. Максимум 110%.","Сети: несколько одинаковых бизнесов дают до +20% к выручке, ещё до +5% дают такие же бизнесы у других игроков.","Новые номера в ГАИ: прокручивай отдельно цифры, буквы и регион и забирай, когда понравится. Красивые номера стали реже.","После обновления игра сама показывает, что нового."]],
  ["147","8 ноября 2026",["Реформа экономики: все цены, доходы и балансы уменьшены вдвое. Тем, кто покупал деньги за звёзды, вернём половину купленного.","Районы стали дешевле: окупаются за 8–16 часов. Каждый район даёт право на 2 бизнеса: 1 район — 2 бизнеса, 2 района — 4 и так далее.","Жильё от 15 млн ₽, в Невинномысске 22 млн ₽, в Ставрополе 30 млн ₽. Улучшения дешевле.","+40 новых бизнесов, больше всего промышленных гигантов.","Запасов в бизнесе хватает на 2 часа.","Особая техника теперь покупается за 3000 звёзд."]],
@@ -2414,10 +2419,12 @@ function tick(){
   drawHud();
   if(++sec%4===0){ liveSheet(); persist(); }
 }
+const HI_TILES=["0_0", "0_1", "0_2", "0_3", "0_4", "0_5", "0_6", "10_-29", "10_-30", "10_-31", "10_-32", "10_-33", "10_-34", "11_-29", "11_-30", "11_-31", "11_-32", "11_-33", "11_-34", "12_-29", "12_-30", "12_-31", "12_-32", "12_-33", "12_-34", "13_-29", "13_-30", "13_-31", "13_-32", "13_-33", "13_-34", "14_-29", "14_-30", "14_-31", "14_-32", "14_-33", "14_-34", "1_0", "1_1", "1_2", "1_3", "1_4", "1_5", "1_6", "2_0", "2_1", "2_2", "2_3", "2_4", "2_5", "2_6", "3_0", "3_1", "3_2", "3_3", "3_4", "3_5", "3_6", "4_0", "4_1", "4_2", "4_3", "4_4", "4_5", "4_6", "9_-29", "9_-30", "9_-31", "9_-32", "9_-33", "9_-34"];
+function hiTiles(){ const box=document.getElementById("mapHi")||(()=>{ const d=document.createElement("div"); d.id="mapHi"; $("mapPlane").insertBefore(d,$("map")); return d; })(); if(zoomAt<5){ box.hidden=true; return; } box.hidden=false; if(box.childElementCount) return; box.innerHTML=HI_TILES.map(n=>{ const [x,y]=n.split("_").map(Number); return `<img loading="lazy" alt="" src="maps/hi/${n}.webp" style="left:${(x*128+1500)/40}%;top:${(y*128+4900)/67}%;width:${128/40}%;height:${128/67}%">`; }).join(""); }
 function setZoom(i){
   const box=$("mapScroll"), cx=(box.scrollLeft+box.clientWidth/2)/box.scrollWidth, cy=(box.scrollTop+box.clientHeight/2)/box.scrollHeight;
   zoomAt=Math.max(0,Math.min(ZOOMS.length-1,i));
-  $("mapPlane").style.setProperty("--zoom",Math.max(1,ZOOMS[zoomAt]*MAPW/1150)); $("map").setAttribute("class","z"+zoomAt); drawMap(); applyOpts();
+  $("mapPlane").style.setProperty("--zoom",Math.max(1,ZOOMS[zoomAt]*MAPW/1150)); $("map").setAttribute("class","z"+zoomAt); hiTiles(); drawMap(); applyOpts();
   box.scrollLeft=cx*box.scrollWidth-box.clientWidth/2; box.scrollTop=cy*box.scrollHeight-box.clientHeight/2;
 }
 $("zoomCity").addEventListener("click",()=>{ setZoom(0); });
