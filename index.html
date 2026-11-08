@@ -2298,7 +2298,7 @@ let netAt=0, netMap=null;
 function netCount(){ if(netMap&&Date.now()-netAt<2000) return netMap; const m={}; BIZ.forEach(b=>{ const o=S.biz[b.id]&&S.biz[b.id].owner; if(!o) return; const k=netKey(b), q=m[k]||(m[k]={me:0,other:0}); if(o==="you") q.me++; else q.other++; }); netAt=Date.now(); netMap=m; return m; }
 const netInfo=b=>{ const q=netCount()[netKey(b)]||{me:0,other:0}, own=Math.min(.2,Math.max(0,q.me-1)*.05), part=Math.min(.05,q.other*.01); return {me:q.me,other:q.other,own,part,k:1+own+part}; };
 const netK=b=>{ try{ return S.biz[b.id]&&S.biz[b.id].owner==="you"?netInfo(b).k:1; }catch{ return 1; } };
-function demand(b){ return Math.min(1.1,(S.market[b.group]||1)*(S.onK||1)); }
+function demand(b){ return Math.min(1.1,Math.max(1,S.market[b.group]||1)*(S.onK||1)); }
 const SKILL=[["Стажёр",.09,.12,"#C9C5BA"],["Опытный",.16,.24,"#6C9BF2"],["Профи",.26,.38,"#F2B640"]];
 const JOB_ROLES={shop:["Продавец","Кассир","Грузчик"],food:["Повар","Официант","Кассир"],auto:["Механик","Мойщик","Приёмщик"],med:["Фармацевт","Администратор","Консультант"],beauty:["Мастер","Администратор","Косметолог"],hotel:["Портье","Горничная","Охранник"],mall:["Охранник","Менеджер","Уборщик"],service:["Мастер","Менеджер","Курьер"]};
 
@@ -2496,6 +2496,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
+ ["155","8 ноября 2026",["Исправлено: спрос больше не падает, пока ты в игре. Пока ты в сети, он растёт на 1% в минуту до 110%. Рыночные новости теперь могут только поднять спрос."]],
  ["154","8 ноября 2026",["Реальные бизнесы: в «Ещё» появился раздел с настоящими местами края. Первая — автомойка «Мойпарк» в Ставрополе на ул. Доваторцев, 69Б. Промокод 7777 на первую мойку и кнопка «Открыть в 2ГИС».","Реальные бизнесы — донатные: их нельзя купить, их выдаёт разработчик. Они не занимают место под бизнесы и улучшаются до 5 уровня."]],
  ["153","8 ноября 2026",["Зарплата на работе снова как до реформы.","Пакеты денег за звёзды снова как до реформы: за те же звёзды вдвое больше денег."]],
  ["152","8 ноября 2026",["Исправлено: повышение статуса в Налоговой иногда писало «не хватает денег», хотя денег хватало."]],
@@ -3394,7 +3395,7 @@ setInterval(()=>{ try{ secTick(); }catch{} },5000);
 { const st=showTab; showTab=function(t){ st(t); if(t==="sec") drawSec(); }; }
 
 /* Part 3: activity raises demand */
-setInterval(()=>{ try{ if(!S||!S.player||document.hidden||!$("menu").hidden) return; S.onK=Math.min(1.1,(S.onK||1)+.005); }catch{} },60000);
+setInterval(()=>{ try{ if(!S||!S.player||document.hidden||!$("menu").hidden) return; S.onK=Math.min(1.1,(S.onK||1)+.01); }catch{} },60000);
 
 /* Part 3: show «Что нового» on the first login after an update */
 const updNum=v=>parseInt(v,10)||0;
