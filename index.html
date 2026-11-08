@@ -6,7 +6,7 @@
 <title>Город Хозяев</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;700&family=Oswald:wght@500;700&family=Playfair+Display:wght@800&family=PT+Mono&family=PT+Sans:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;700&family=Oswald:wght@500;700&family=Playfair+Display:wght@800&family=PT+Mono&family=PT+Sans:wght@400;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap">
 <style>
 /* Layout: a night-time town under street lamps. Everything is dark except the paperwork: protocols and contracts appear as lit sheets of paper. */
 :root {
@@ -534,6 +534,35 @@ nav button { filter: none; }
 </style>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>addEventListener("load",()=>{const t=window.Telegram&&Telegram.WebApp;if(t){t.ready();t.expand();try{t.setHeaderColor("#14151B");t.setBackgroundColor("#0D0E12");t.disableVerticalSwipes()}catch(e){}}});</script>
+
+<style id="newLook">
+/* New look 2026-11: deep night blue, gold accent, green income, rounded glass panels */
+:root { --night:#0A0D12; --coal:#111720; --smoke:#1A2230; --line:#263243; --bone:#EDF1F6; --ash:#8E9AAB; --lamp:#E9B949; --good:#4FD9A6; --blood:#E5544B; --mono:"JetBrains Mono","PT Mono",monospace; --body:"Inter","Golos Text",system-ui,sans-serif; --display:"Inter","Golos Text",system-ui,sans-serif; }
+body { font-family: var(--body); }
+.hud { background: rgba(10,13,18,.97); border-bottom: 1px solid #1E2733; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+.hudAvatar { border-radius: 14px; border: 1.5px solid #2C384A; box-shadow: none; background: #1A2230; }
+#hudNick { font-weight: 800; letter-spacing: -.01em; }
+.hudMoney { grid-template-columns: 1fr 1fr; gap: 8px; }
+.hudMoney div { padding: 8px 12px; background: #111720; border: 1px solid #1E2733; border-radius: 12px; position: relative; }
+.hudMoney small { font-size: 11px; letter-spacing: .02em; text-transform: none; color: var(--ash); }
+#money { font: 700 18px/1.2 var(--mono); color: var(--bone); }
+#rate { font: 700 17px/1.2 var(--mono); color: var(--good); }
+#rateSpark { position: absolute; right: 10px; bottom: 9px; color: var(--good); opacity: .9; }
+.btn { border-radius: 12px; border-color: #1E2733; background: #111720; font-weight: 700; }
+.btn.main { background: var(--lamp); border-color: var(--lamp); color: #141006; }
+.btn.red { background: rgba(229,84,75,.12); border-color: rgba(229,84,75,.45); color: #F3A49C; }
+.card { background: #111720; border: 1px solid #1E2733; border-radius: 14px; }
+nav { background: rgba(10,13,18,.97); border-top: 1px solid #1E2733; }
+nav button { filter: none; color: #7F8B9B; font-weight: 600; }
+nav button.on { color: var(--bone); box-shadow: inset 0 2px 0 var(--lamp); }
+#mapSearch input, .txt, input.txt, select { border-radius: 12px; background: #111720; border-color: #1E2733; }
+h2 { font-family: var(--display); font-weight: 800; letter-spacing: -.01em; }
+.kv b, .num { font-family: var(--mono); }
+#sheet { background: #0E131B; border-top: 1px solid #1E2733; border-radius: 20px 20px 0 0; }
+.rankChip { border-radius: 8px; }
+.jrTag { border-radius: 10px; }
+#mapTiles img.tile, #mapHi img { position: absolute; display: block; }
+</style>
 </head>
 <body>
 <div id="app">
@@ -2908,7 +2937,7 @@ $("menuBtn").addEventListener("click",()=>showMenu());
 
 document.querySelectorAll("nav button").forEach(b=>{ b.querySelector(".ic").innerHTML=ico({map:"map",work:"brief",feed:"news",chat:"chat",players:"users",more:"menu"}[b.dataset.tab]); });
 $("sndBtn").innerHTML=ico("music"); $("bell").insertAdjacentHTML("afterbegin",ico("bell")); $("bell").firstChild.nextSibling&&$("bell").childNodes.forEach(n=>{ if(n.nodeType===3) n.remove(); }); $("menuBtn").innerHTML=ico("menu");
-$("mapTiles").innerHTML=Array.from({length:14*8},(_,i)=>{ const tx=i%8, ty=Math.floor(i/8); return `<img loading="lazy" alt="" src="maps/t/${tx}_${ty}.webp" style="left:${tx*512/40}%;top:${ty*512/67}%;width:${512/40}%;height:${ty<13?512/67:(6700-13*512)/67}%">`; }).join("");
+$("mapTiles").innerHTML="";
 function setSheet(){ return Promise.resolve(true); } function sheetSync(){ }
 function pinsToRoads(){ const list=[...BIZ,...CIVIC].filter(b=>b.id!=="zolton"); const G={}, CS=48, key=(a,b)=>a+":"+b; ROADS.forEach(r=>{ const f=r[2]; for(let i=0;i+3<f.length;i+=2){ const x0=Math.floor(Math.min(f[i],f[i+2])/CS), x1=Math.floor(Math.max(f[i],f[i+2])/CS), y0=Math.floor(Math.min(f[i+1],f[i+3])/CS), y1=Math.floor(Math.max(f[i+1],f[i+3])/CS); for(let a=x0;a<=x1;a++) for(let c=y0;c<=y1;c++) (G[key(a,c)]=G[key(a,c)]||[]).push([f[i],f[i+1],f[i+2],f[i+3]]); } }); list.forEach(b=>{ let bd=1e9,bq=null; const cx=Math.floor(b.x/CS), cy=Math.floor(b.y/CS); for(let a=cx-1;a<=cx+1;a++) for(let c=cy-1;c<=cy+1;c++) (G[key(a,c)]||[]).forEach(g=>{ const ax=g[0],ay=g[1],dx=g[2]-ax,dy=g[3]-ay,l=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((b.x-ax)*dx+(b.y-ay)*dy)/l)),qx=ax+t*dx,qy=ay+t*dy,d=Math.hypot(b.x-qx,b.y-qy); if(d<bd){bd=d;bq=[qx,qy];} }); if(bq&&bd>6){ const k=6/bd; b.x=bq[0]+(b.x-bq[0])*k; b.y=bq[1]+(b.y-bq[1])*k; } }); }
 { const da=drawAdmin; drawAdmin=function(){ da(); const h=$("adminView").querySelector("h2"); if(h){ h.insertAdjacentHTML("afterend",`<div class="card" id="aReports">${repHtml()}</div>`); repLoad(); } const c=$("aPick"); if(c&&aSel){ c.closest(".card").insertAdjacentHTML("afterend",`<div class="card" id="aAssets"><h3>Имущество игрока</h3><p class="muted">Загрузка…</p></div>`); assetsLoad(); } }; }
@@ -2953,6 +2982,26 @@ pinsToRoads();
 { const st=DISTRICTS.map(d=>{ const l=bizIn(d); return {d,n:l.length,net:l.reduce((a,b)=>a+bizNet(b),0)}; }), mxN=Math.max(...st.map(x=>x.n)), mxV=Math.max(...st.map(x=>x.net)), mxI=Math.max(...st.map(x=>x.d.inc)), sc=st.map(x=>.3*x.n/mxN+.3*x.net/mxV+.4*x.d.inc/mxI), lo=Math.min(...sc), hi=Math.max(...sc); st.forEach((x,i)=>{ const f=(sc[i]-lo)/(hi-lo), d=x.d; d.oldPrice=d.price; d.price=Math.round((20e6+f*180e6)/1e6/5)*5e6; d.inc=Math.round(d.price/((8+f*8)*60)/100)*100; }); }
 econMigrate(); buildGraph(); drawAll(); applyOpts(); showMenu(); cloudInit();
 setInterval(()=>{ if(S&&typeof Object.getOwnPropertyDescriptor(S,"money")?.get!=="function") ledgerBind(); ledgerCtx="Событие в игре"; try{ staffPin(); tick(); staffPin(); }finally{ ledgerCtx=""; } },250);
+/* Map tiles: only the tiles on screen are loaded (protects phones from running out of memory) */
+const HI_SET=new Set(HI_TILES), tileImgs=new Map(); let tileRaf=0;
+function tilesUpdate(){ const box=$("mapScroll"), pl=$("mapPlane"); if(!box||!pl||!pl.offsetWidth) return; const k=4000/pl.offsetWidth, x0=-1500+box.scrollLeft*k, y0=-4900+box.scrollTop*k, x1=x0+box.clientWidth*k, y1=y0+box.clientHeight*k, want=new Map();
+  const lay=(dir,T,cols,rows,ox,oy,test)=>{ const a=Math.floor((x0-ox)/T)-1, b=Math.floor((x1-ox)/T)+1, c=Math.floor((y0-oy)/T)-1, d=Math.floor((y1-oy)/T)+1; for(let ty=c;ty<=d;ty++) for(let tx=a;tx<=b;tx++){ if(cols&&(tx<0||ty<0||tx>=cols||ty>=rows)) continue; const n=dir==="hi"?`${Math.floor((ox+tx*T)/T)}_${Math.floor((oy+ty*T)/T)}`:`${tx}_${ty}`; if(test&&!test(n)) continue; want.set(dir+"/"+n,{dir,n,x:ox+tx*T,y:oy+ty*T,T}); } };
+  if(zoomAt>=2&&zoomAt<4) lay("lo",512,8,14,-1500,-4900);
+  if(zoomAt>=4) lay("t",512,8,14,-1500,-4900);
+  if(zoomAt>=6) lay("hi",64,0,0,0,0,n=>HI_SET.has(n));
+  const host={lo:$("mapTiles"),t:$("mapTiles"),hi:document.getElementById("mapHi")||(()=>{ const d=document.createElement("div"); d.id="mapHi"; pl.insertBefore(d,$("map")); return d; })()};
+  tileImgs.forEach((img,key)=>{ if(!want.has(key)){ img.remove(); tileImgs.delete(key); } });
+  want.forEach((q,key)=>{ if(tileImgs.has(key)) return; const img=new Image(); img.alt=""; img.decoding="async"; img.className="tile "+q.dir; img.style.cssText=`left:${(q.x+1500)/40}%;top:${(q.y+4900)/67}%;width:${q.T/40+.02}%;height:${q.T/67+.02}%`; img.onerror=()=>{ img.style.visibility="hidden"; }; img.src=`maps/${q.dir}/${q.n}.webp`; host[q.dir].appendChild(img); tileImgs.set(key,img); });
+  document.getElementById("mapHi").hidden=zoomAt<6; }
+function hiTiles(){ tilesUpdate(); }
+$("mapScroll").addEventListener("scroll",()=>{ if(tileRaf) return; tileRaf=requestAnimationFrame(()=>{ tileRaf=0; tilesUpdate(); }); },{passive:true});
+addEventListener("resize",()=>tilesUpdate()); setTimeout(tilesUpdate,300);
+
+/* New look: income sparkline in the top bar */
+const incHist=[]; setInterval(()=>{ try{ if(!S.player) return; incHist.push(Math.round(incomeNow())); if(incHist.length>24) incHist.shift(); drawSpark(); }catch{} },20000);
+function drawSpark(){ const r=$("rate"); if(!r) return; let sp=document.getElementById("rateSpark"); if(!sp){ r.insertAdjacentHTML("afterend",'<svg id="rateSpark" viewBox="0 0 60 18" width="60" height="18" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.7" points=""/></svg>'); sp=document.getElementById("rateSpark"); } const v=incHist.length>1?incHist:[0,0], lo=Math.min(...v), hi=Math.max(...v); sp.firstChild.setAttribute("points",v.map((y,i)=>`${(i/(v.length-1)*60).toFixed(1)},${(hi>lo?16-(y-lo)/(hi-lo)*14:9).toFixed(1)}`).join(" ")); }
+setTimeout(()=>{ try{ incHist.push(Math.round(incomeNow())); drawSpark(); }catch{} },1500);
+
 /* Part 3: plates constructor */
 const PL_LET="АВЕКМНОРСТУХ", PL_PART={letters:2500,digits:7500,region:12500,all:20000};
 const PL_BLAT=["АМР","ЕКХ","ВОР","ММР","КМР"];
