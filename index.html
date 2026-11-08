@@ -596,6 +596,21 @@ nav button.on { color: var(--lamp); box-shadow: inset 0 2px 0 var(--lamp); backg
 </style>
 <style id="fix11">.moreGrid button{min-width:0}.moreGrid b{overflow-wrap:anywhere;hyphens:auto;max-width:100%}@media (max-width:360px){.moreGrid b{font-size:15px}}</style>
 <style id="fix12">#szWhy.bad{outline:2px solid var(--bad,#E5413B)}</style>
+<style id="fix14">
+.chips,.segs,.hscroll,[style*="overflow-x:auto"]{scrollbar-width:none}
+.chips::-webkit-scrollbar,.segs::-webkit-scrollbar,[style*="overflow-x:auto"]::-webkit-scrollbar{display:none}
+.wNav{display:grid;grid-template-columns:48px 1fr 48px;gap:8px;margin:10px 0}
+.wNav button{min-height:46px;border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,#1A212C,#121821);color:var(--bone,#E8ECF2);font-weight:700;font-size:15px;box-shadow:0 4px 0 #06080B;transition:transform .08s,box-shadow .08s}
+.wNav button:active{transform:translateY(3px);box-shadow:0 1px 0 #06080B}
+.wNav .wArr{font-size:24px;line-height:1}
+.wNav .wCur span{opacity:.6;font-size:12px;margin-left:6px}
+.wGrid{display:none;grid-template-columns:repeat(2,1fr);gap:8px;margin:0 0 12px}
+.wGrid.open{display:grid}
+.wGrid button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:#141A23;color:var(--bone,#E8ECF2);font-size:14px;padding:6px 8px;text-align:center}
+.shopHead>div:last-child{min-width:0}
+.shopHead h2{font-size:clamp(17px,5.2vw,24px);overflow-wrap:anywhere;hyphens:auto}
+.wGrid button.on{background:var(--lamp,#E9B949);color:#0A0D12;border-color:var(--lamp,#E9B949);font-weight:700}
+</style>
 </head>
 <body>
 <div id="app">
@@ -3514,6 +3529,27 @@ try{localStorage.removeItem('kochu_nick')}catch(e){}
 (function(){const n=imgs[0];n.onload=()=>{n.onload=null;n.classList.add('on');n.style.transform=pose(1,[.09,.45],1)};n.width=P[1][0];n.height=P[1][1];n.src=P[1][2]})();
 
 }
+</script>
+<script>
+(function(){
+ function navify(seg){ if(seg.dataset.nav) return; const bs=[...seg.querySelectorAll("button")]; if(bs.length<5) return; seg.dataset.nav=1;
+  let i=bs.findIndex(b=>b.classList.contains("on")); if(i<0) i=0;
+  const attr=[...bs[0].attributes].find(a=>a.name.startsWith("data-"));
+  const mk=(b,cls,label,aria)=>{ const n=document.createElement("button"); n.className=cls; if(b) for(const a of b.attributes) if(a.name.startsWith("data-")) n.setAttribute(a.name,a.value); n.innerHTML=label; if(aria) n.setAttribute("aria-label",aria); return n; };
+  const nav=document.createElement("div"); nav.className="wNav";
+  const prev=bs[(i-1+bs.length)%bs.length], next=bs[(i+1)%bs.length];
+  nav.append(mk(prev,"wArr","‹","Назад: "+prev.textContent.trim()));
+  const cur=document.createElement("button"); cur.className="wCur"; cur.innerHTML=bs[i].textContent.trim()+"<span>все разделы ▾</span>"; cur.setAttribute("aria-expanded","false");
+  nav.append(cur); nav.append(mk(next,"wArr","›","Дальше: "+next.textContent.trim()));
+  const grid=document.createElement("div"); grid.className="wGrid";
+  bs.forEach((b,k)=>{ const n=mk(b,k===i?"on":"",b.textContent.trim()); grid.append(n); });
+  cur.addEventListener("click",e=>{ e.stopPropagation(); const o=grid.classList.toggle("open"); cur.setAttribute("aria-expanded",o); cur.querySelector("span").textContent=o?"свернуть ▴":"все разделы ▾"; });
+  seg.replaceWith(nav); nav.after(grid);
+ }
+ const scan=root=>{ (root.querySelectorAll?root:document).querySelectorAll('.segs[style*="overflow-x:auto"]').forEach(navify); };
+ new MutationObserver(ms=>{ for(const m of ms) for(const n of m.addedNodes) if(n.nodeType===1){ if(n.matches&&n.matches('.segs[style*="overflow-x:auto"]')) navify(n); else scan(n); } }).observe(document.body,{childList:true,subtree:true});
+ scan(document);
+})();
 </script>
 </body>
 </html>
