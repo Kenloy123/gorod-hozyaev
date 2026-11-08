@@ -911,7 +911,7 @@ $("createBody").addEventListener("click", e=>{
     else {
       S.wardrobe=["hat:"+draft.look.hat,"ctype:"+draft.look.ctype,"coat:10","shirt:3"];
       S.player={nick,look:draft.look,role:draft.role,gang:draft.gang,grole:"novice",id:String(100000+Math.floor(Math.random()*900000)),born:Date.now()};
-      if(draft.role==="dealer") S.money+=750;
+      if(draft.role==="dealer") S.money+=750; S.updSeen=UPDATES[0][0];
       seedNews(); notify("info","Добро пожаловать",`${nick}, начни с работы и присмотри свободный бизнес.`);
     }
     $("create").hidden=true; S.econ50=1; S.season=2; S.tg=cloud.id; persist(); cloudSave(); drawAll(); askGang(); askNews();
@@ -2970,7 +2970,7 @@ setInterval(()=>{ try{ if(!S||!S.player||document.hidden||!$("menu").hidden) ret
 
 /* Part 3: show «Что нового» on the first login after an update */
 const updNum=v=>parseInt(v,10)||0;
-function updShow(){ if(!S.player||$("updGate")) return; const v=UPDATES[0][0]; if(S.updSeen===v) return; if(!S.updSeen&&(S.stats.played||0)<300000){ S.updSeen=v; persist(); return; } const from=updNum(S.updSeen||"0"), pages=[]; UPDATES.filter(([n])=>updNum(n)>from).slice(0,6).reverse().forEach(([n,d,x])=>x.forEach(t=>pages.push([n,d,t]))); if(!pages.length){ S.updSeen=v; persist(); return; } let k=0; const g=document.createElement("div"); g.id="updGate"; g.setAttribute("role","dialog"); g.setAttribute("aria-modal","true"); g.setAttribute("aria-label","Что нового"); document.body.appendChild(g);
+function updShow(){ if(!S.player||$("updGate")) return; const v=UPDATES[0][0], dev=typeof cloud!=="undefined"&&cloud.dev; if(S.updSeen===v&&!dev) return; if(!S.updSeen&&!dev&&(S.stats.played||0)<300000){ S.updSeen=v; persist(); return; } const from=dev?146:updNum(S.updSeen||"0"), pages=[]; UPDATES.filter(([n])=>updNum(n)>from).slice(0,6).reverse().forEach(([n,d,x])=>x.forEach(t=>pages.push([n,d,t]))); if(!pages.length){ S.updSeen=v; persist(); return; } let k=0; const g=document.createElement("div"); g.id="updGate"; g.setAttribute("role","dialog"); g.setAttribute("aria-modal","true"); g.setAttribute("aria-label","Что нового"); document.body.appendChild(g);
   const draw=()=>{ const [n,d,t]=pages[k], last=k===pages.length-1; g.innerHTML=`<div class="updCard"><p class="updTop">Что нового · ${k+1} из ${pages.length}</p><div class="updDots">${pages.map((_,i)=>`<i class="${i<=k?"on":""}"></i>`).join("")}</div><p class="muted">Версия ${esc(n)} · ${esc(d)}</p><p class="updText">${t}</p><div class="updBtns">${k?'<button class="btn" data-upd="back">Назад</button>':""}<button class="btn main" data-upd="${last?"done":"next"}">${last?"Понятно, закрыть":"Далее"}</button></div></div>`; g.querySelector('[data-upd="next"],[data-upd="done"]').focus(); };
   g.addEventListener("click",e=>{ const b=e.target.closest("[data-upd]"); if(!b) return; const a=b.dataset.upd; if(a==="next"&&k<pages.length-1){ k++; draw(); } else if(a==="back"&&k>0){ k--; draw(); } else if(a==="done"){ S.updSeen=v; persist(); cloudSave(); g.remove(); } });
   g.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); } }); draw(); }
