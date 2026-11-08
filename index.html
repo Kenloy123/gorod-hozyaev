@@ -563,6 +563,37 @@ h2 { font-family: var(--display); font-weight: 800; letter-spacing: -.01em; }
 .jrTag { border-radius: 10px; }
 #mapTiles img.tile, #mapHi img { position: absolute; display: block; }
 </style>
+
+<style id="look3d">
+/* Depth: panels float above the map, buttons are raised and press down */
+.hudMoney div:nth-child(2) { display: flex; flex-direction: column; gap: 2px; }
+.hudMoney div:nth-child(2) small { order: 1; }
+#rateSpark { order: 2; position: static !important; width: 100%; height: 16px; display: block; }
+#rate { order: 3; }
+.hud { background: linear-gradient(180deg, #121925 0%, #0A0D12 100%); box-shadow: 0 10px 28px rgba(0,0,0,.6), inset 0 -1px 0 rgba(255,255,255,.04); }
+.hudMoney div { background: linear-gradient(180deg, #16202D 0%, #0F151E 100%); border: 1px solid #253244; box-shadow: 0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.07); }
+.hudAvatar { box-shadow: 0 6px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1); }
+.btn, .iconBtn, #zoom button, .jrTag, .segs button, nav button { transition: transform .08s ease, box-shadow .08s ease, filter .08s ease; }
+.btn { background: linear-gradient(180deg, #1D2838 0%, #131B27 100%); border: 1px solid #2A384C; box-shadow: 0 4px 0 #070A0F, 0 10px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.09); }
+.btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #070A0F, 0 4px 8px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06); }
+.btn.main { background: linear-gradient(180deg, #FFD978 0%, #E9B949 55%, #D19A2A 100%); border: 1px solid #F7CF6B; color: #1A1306; text-shadow: 0 1px 0 rgba(255,255,255,.35); box-shadow: 0 4px 0 #8A6214, 0 12px 22px rgba(233,185,73,.25), inset 0 1px 0 rgba(255,255,255,.6); }
+.btn.main:active:not(:disabled) { box-shadow: 0 1px 0 #8A6214, 0 4px 10px rgba(233,185,73,.2), inset 0 1px 0 rgba(255,255,255,.5); }
+.btn.red { background: linear-gradient(180deg, #3A1C1F 0%, #261214 100%); border: 1px solid #5A2A2E; color: #F6B0A8; box-shadow: 0 4px 0 #120607, 0 10px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.07); }
+.btn:disabled { box-shadow: none; transform: none; }
+.card { background: linear-gradient(180deg, #151D29 0%, #0F151E 100%); border: 1px solid #222E3F; box-shadow: 0 12px 28px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
+#zoom button { border-radius: 14px; background: linear-gradient(180deg, #1D2838, #111821); border: 1px solid #2A384C; box-shadow: 0 4px 0 #06090D, 0 10px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.1); color: var(--bone); }
+#zoom button:active { transform: translateY(3px); box-shadow: 0 1px 0 #06090D, 0 4px 8px rgba(0,0,0,.4); }
+#mapSearch input { background: linear-gradient(180deg, #141C27, #0F151E); border: 1px solid #253244; box-shadow: 0 8px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05); }
+#hint { background: linear-gradient(180deg, #172131, #0F151E) !important; border: 1px solid #253244 !important; border-radius: 16px !important; box-shadow: 0 14px 30px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06) !important; }
+nav { background: linear-gradient(180deg, #111822 0%, #080B10 100%); box-shadow: 0 -10px 26px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05); }
+nav button.on { color: var(--lamp); box-shadow: inset 0 2px 0 var(--lamp); background: radial-gradient(ellipse at 50% 0%, rgba(233,185,73,.16), transparent 70%); }
+#sheet { background: linear-gradient(180deg, #131A25 0%, #0B1017 100%); box-shadow: 0 -18px 40px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.07); }
+.jrTag, .segs button { box-shadow: 0 3px 0 #06090D, inset 0 1px 0 rgba(255,255,255,.07); }
+.jrTag:active, .segs button:active { transform: translateY(2px); box-shadow: 0 1px 0 #06090D; }
+#map .pin, #map g[data-id] { filter: drop-shadow(0 3px 2px rgba(0,0,0,.65)); }
+#pop, .toast { border-radius: 14px; box-shadow: 0 14px 30px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08); }
+.updCard { background: linear-gradient(180deg, #151D29 0%, #0B1017 100%); border: 1px solid #253244; box-shadow: 0 24px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.07); }
+</style>
 </head>
 <body>
 <div id="app">
@@ -2988,11 +3019,11 @@ function tilesUpdate(){ const box=$("mapScroll"), pl=$("mapPlane"); if(!box||!pl
   const lay=(dir,T,cols,rows,ox,oy,test)=>{ const a=Math.floor((x0-ox)/T)-1, b=Math.floor((x1-ox)/T)+1, c=Math.floor((y0-oy)/T)-1, d=Math.floor((y1-oy)/T)+1; for(let ty=c;ty<=d;ty++) for(let tx=a;tx<=b;tx++){ if(cols&&(tx<0||ty<0||tx>=cols||ty>=rows)) continue; const n=dir==="hi"?`${Math.floor((ox+tx*T)/T)}_${Math.floor((oy+ty*T)/T)}`:`${tx}_${ty}`; if(test&&!test(n)) continue; want.set(dir+"/"+n,{dir,n,x:ox+tx*T,y:oy+ty*T,T}); } };
   if(zoomAt>=2&&zoomAt<4) lay("lo",512,8,14,-1500,-4900);
   if(zoomAt>=4) lay("t",512,8,14,-1500,-4900);
-  if(zoomAt>=6) lay("hi",64,0,0,0,0,n=>HI_SET.has(n));
+  if(zoomAt>=5) lay("hi",64,0,0,0,0,n=>HI_SET.has(n));
   const host={lo:$("mapTiles"),t:$("mapTiles"),hi:document.getElementById("mapHi")||(()=>{ const d=document.createElement("div"); d.id="mapHi"; pl.insertBefore(d,$("map")); return d; })()};
   tileImgs.forEach((img,key)=>{ if(!want.has(key)){ img.remove(); tileImgs.delete(key); } });
   want.forEach((q,key)=>{ if(tileImgs.has(key)) return; const img=new Image(); img.alt=""; img.decoding="async"; img.className="tile "+q.dir; img.style.cssText=`left:${(q.x+1500)/40}%;top:${(q.y+4900)/67}%;width:${q.T/40+.02}%;height:${q.T/67+.02}%`; img.onerror=()=>{ img.style.visibility="hidden"; }; img.src=`maps/${q.dir}/${q.n}.webp`; host[q.dir].appendChild(img); tileImgs.set(key,img); });
-  document.getElementById("mapHi").hidden=zoomAt<6; }
+  document.getElementById("mapHi").hidden=zoomAt<5; }
 function hiTiles(){ tilesUpdate(); }
 $("mapScroll").addEventListener("scroll",()=>{ if(tileRaf) return; tileRaf=requestAnimationFrame(()=>{ tileRaf=0; tilesUpdate(); }); },{passive:true});
 addEventListener("resize",()=>tilesUpdate()); setTimeout(tilesUpdate,300);
