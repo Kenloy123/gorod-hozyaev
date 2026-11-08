@@ -595,6 +595,7 @@ nav button.on { color: var(--lamp); box-shadow: inset 0 2px 0 var(--lamp); backg
 .updCard { background: linear-gradient(180deg, #151D29 0%, #0B1017 100%); border: 1px solid #253244; box-shadow: 0 24px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.07); }
 </style>
 <style id="fix11">.moreGrid button{min-width:0}.moreGrid b{overflow-wrap:anywhere;hyphens:auto;max-width:100%}@media (max-width:360px){.moreGrid b{font-size:15px}}</style>
+<style id="fix12">#szWhy.bad{outline:2px solid var(--bad,#E5413B)}</style>
 </head>
 <body>
 <div id="app">
@@ -935,6 +936,285 @@ function avatar(l0,big){
    <path d="${["M44 67Q50 69 56 67","M43 66Q50 72 57 66","M44 68L56 67","M44 68Q52 69 57 65"][l.mouth]}" fill="none" stroke="${f?"#A9272C":"#5B2A20"}" stroke-width="${f?2.4:1.5}"/>
    ${f?"":beards[l.beard]}${l.style&&l.style!==8&&l.style!==9?cap:""}${styles[l.style]}${glasses}${extra}${MASKS(l.mask)}${hats[l.hat]}</svg>`;
 }
+/* 3D character */
+/* 3D character: soft clay figure rendered once per look with a small ray-marcher */
+const H3D=(()=>{
+const FS=`precision highp float;
+uniform vec2 R;uniform float MODE,ROT;
+uniform vec3 cSkin,cHair,cCoat,cShirt,cTie,cPants,cShoes,cBelt,cBuckle,cHand,cEye,cBag,cLip,cHat1,cHat2,cHat3;
+uniform float uSex,uFace,uStyle,uBeard,uHat,uGlass,uCtype,uTie,uPantsT,uShoesT,uBelt,uBagT,uMouth,uBrow,uExtra,uMask;
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+float sdE(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float sdC(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+float sdC2(vec3 p,vec3 a,vec3 b,float ra,float rb){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-mix(ra,rb,h);}
+float sdRB(vec3 p,vec3 b,float r){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.)-r;}
+float sdCyl(vec3 p,float r,float h,float rr){vec2 d=vec2(length(p.xz)-r+rr,abs(p.y)-h+rr);return min(max(d.x,d.y),0.)+length(max(d,0.))-rr;}
+float sdTor(vec3 p,float R0,float r){vec2 q=vec2(length(p.xz)-R0,p.y);return length(q)-r;}
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}
+bool is(float u,float v){return abs(u-v)<.5;}
+vec2 U(vec2 a,vec2 b){return a.x<b.x?a:b;}
+// materials: 1 skin 2 hair 3 coat 4 pants 5 shoes 6 eye 7 brow 8 hat1 9 hat2 10 glassdark 11 gold 12 belt 13 bag 14 shirt 15 hat3 16 white
+const vec3 HC=vec3(0.,1.56,0.);
+vec3 hr(){ if(is(uFace,1.))return vec3(.118,.125,.12); if(is(uFace,2.))return vec3(.1,.137,.114); if(is(uFace,3.))return vec3(.114,.128,.12); if(is(uFace,4.))return vec3(.116,.118,.122); return vec3(.108,.13,.118);}
+vec2 hairG(vec3 p,vec3 q){
+ vec2 r=vec2(1e3,2.);
+ if(is(uStyle,0.)) return r;
+ vec3 R0=hr();
+ if(is(uStyle,8.)){ float d=sdE(p-vec3(0,1.645,.005),R0+.006); d=max(d,1.6-p.y); d=max(d,-(p.z-.08+ (p.y-1.7)*.8)); return vec2(d,2.);}
+ float base=sdE(p-vec3(0,1.668,-.008),R0+vec3(.012,.0,.012));
+ float hh=mix(1.712+.012*p.x/.1,1.6,smoothstep(.03,-.07,p.z));
+ if(is(uStyle,2.)||is(uStyle,12.)) hh=mix(1.70+.03*smoothstep(-.1,.1,p.x),1.6,smoothstep(.03,-.07,p.z));
+ float d=smax(base,(hh-p.y)*.7,.02);
+ if(is(uStyle,1.)||is(uStyle,2.)||is(uStyle,3.)||is(uStyle,12.)) d=smin(d,sdE(p-vec3(-.01,1.74,.02),vec3(.11,.06,.11)),.05);
+ if(is(uStyle,3.)) d=smin(d,sdE(p-vec3(0,1.75,-.02),vec3(.112,.06,.125)),.04);
+ if(is(uStyle,12.)) d=smin(d,sdE(p-vec3(.05,1.70,.09),vec3(.06,.035,.04)),.03);
+ if(is(uStyle,4.)){ d=base; for(int i=0;i<9;i++){ float a=float(i)*.785; vec3 c=vec3(.1*cos(a),1.71+.035*sin(a*2.),.1*sin(a)); d=smin(d,length(p-c)-.055,.02);} d=smin(d,length(p-vec3(0,1.78,0))-.08,.03); d=smax(d,(1.62-p.y),.02); d=smax(d,-(sdE(p-vec3(0,1.6,.1),vec3(.1,.09,.06))),.02);}
+ if(is(uStyle,5.)||is(uStyle,7.)||is(uStyle,11.)){ float lo=is(uStyle,7.)?1.5:1.33; float back=sdRB(p-vec3(0,(1.7+lo)*.5,-.055),vec3(.095,(1.7-lo)*.5,.035),.05); back=smax(back,p.z-.035,.02); d=smin(d,back,.04);}
+ if(is(uStyle,11.)){ for(int i=0;i<6;i++){ float a=-1.2+float(i)*.48; d=smin(d,sdC(p,vec3(.12*sin(a),1.7,-.12*cos(a)*.6),vec3(.14*sin(a),1.35,-.1*cos(a)*.6),.022),.01);} }
+ if(is(uStyle,6.)) d=smin(d,length(p-vec3(0,1.82,-.04))-.06,.03);
+ if(is(uStyle,9.)){ d=sdE(p-vec3(0,1.74,-.01),vec3(.024,.085,.135)); d=max(d,1.66-p.y);}
+ if(is(uStyle,10.)) d=smin(d,sdC2(p,vec3(0,1.68,-.13),vec3(0,1.42,-.17),.04,.02),.03);
+ if(uSex>.5&&(is(uStyle,1.)||is(uStyle,2.)||is(uStyle,3.)||is(uStyle,12.))){ float back=sdRB(p-vec3(0,1.56,-.055),vec3(.095,.11,.035),.05); back=smax(back,p.z-.035,.02); d=smin(d,back,.04);}
+ return vec2(d,2.);
+}
+vec2 hatG(vec3 p){
+ vec2 r=vec2(1e3,8.);
+ if(is(uHat,0.)) return r;
+ vec3 c=p-vec3(0,1.72,0);
+ if(is(uHat,1.)){ float brim=sdCyl(c-vec3(0,.0,0),.2,.008,.006); float cr=sdCyl(c-vec3(0,.07,0),.115,.07,.04); cr=smax(cr,-sdE(c-vec3(0,.16,.0),vec3(.03,.03,.09)),.02); r=U(vec2(brim,8.),vec2(cr,9.)); float band=max(sdCyl(c-vec3(0,.025,0),.118,.018,.005),-sdCyl(c,.11,.1,.0)); r=U(r,vec2(band,15.)); }
+ else if(is(uHat,2.)||is(uHat,10.)){ float cr=sdE(c-vec3(0,.02,.01),vec3(.13,.065,.14)); cr=max(cr,-c.y+ -.01); float vis=sdE(c-vec3(0,-.005,.13),vec3(.1,.01,.08)); r=vec2(smin(cr,vis,.01),8.);}
+ else if(is(uHat,11.)){ float cr=sdE(c-vec3(0,.0,0),vec3(.125,.11,.13)); cr=max(cr,-c.y-.01); float vis=sdE(c-vec3(0,-.01,.15),vec3(.095,.01,.085)); r=vec2(smin(cr,vis,.01),8.); r=U(r,vec2(length(c-vec3(0,.11,0))-.012,16.));}
+ else if(is(uHat,3.)){ vec3 b=c-vec3(-.02,.02,0); b.xy=rot(.25)*b.xy; float cr=sdE(b,vec3(.15,.045,.14)); r=vec2(cr,8.);}
+ else if(is(uHat,4.)){ float cr=sdE(c-vec3(0,0,0),vec3(.14,.12,.145)); cr=max(cr,-c.y-.02); vec3 q=vec3(abs(c.x),c.y,c.z); float flap=sdRB(q-vec3(.125,-.08,0),vec3(.012,.07,.06),.02); float front=sdTor(c-vec3(0,.0,.0),.138,.028); front=max(front,-c.z-.02); r=U(vec2(min(cr,flap),9.),vec2(front,8.));}
+ else if(is(uHat,5.)){ float cr=sdE(c-vec3(0,-.01,0),vec3(.128,.1,.135)); cr=max(cr,-c.y-.03); float knot=length(c-vec3(0,-.02,-.14))-.025; float tails=sdC(c,vec3(0,-.03,-.14),vec3(.03,-.12,-.16),.012); r=vec2(min(cr,min(knot,tails)),8.);}
+ else if(is(uHat,6.)||is(uHat,9.)){ float cr=sdE(c-vec3(0,.0,0),vec3(.13,.13,.135)); cr=max(cr,-c.y-.03); float cuff=max(sdCyl(c-vec3(0,-.005,0),.133,.03,.02),-sdCyl(c,.11,.2,.0)); r=U(vec2(cr,8.),vec2(cuff,9.)); if(is(uHat,9.)) r=vec2(min(cr,cuff),8.);}
+ else if(is(uHat,7.)){ float cr=sdE(c-vec3(0,.01,0),vec3(.13,.1,.135)); cr=max(cr,-c.y-.0); float brim=sdE(c-vec3(0,-.005-.0*length(c.xz),0),vec3(.2,.012,.2)); brim=max(brim,-sdE(c,vec3(.12,.2,.12))); r=vec2(min(cr,brim),8.);}
+ else if(is(uHat,8.)){ float brim=sdCyl(c,.17,.008,.006); float cr=sdCyl(c-vec3(0,.13,0),.105,.13,.01); float band=max(sdCyl(c-vec3(0,.035,0),.108,.025,.004),-sdCyl(c,.1,.2,.0)); r=U(U(vec2(brim,8.),vec2(cr,8.)),vec2(band,15.));}
+ else if(is(uHat,12.)){ float cr=sdE(c-vec3(0,.01,0),vec3(.135,.12,.145)); cr=max(cr,-c.y-.0); float brim=sdE(c-vec3(0,0,.02),vec3(.155,.012,.175)); float ridge=sdE(c-vec3(0,.11,0),vec3(.025,.03,.13)); r=vec2(min(min(cr,brim),ridge),8.);}
+ else if(is(uHat,13.)){ vec3 b=c; float bend=.35*b.x*b.x; float brim=sdE(b-vec3(0,bend,0),vec3(.26,.012,.22)); float cr=sdCyl(c-vec3(0,.07,0),.115,.07,.04); cr=smax(cr,-sdE(c-vec3(0,.16,0),vec3(.03,.03,.09)),.02); float band=max(sdCyl(c-vec3(0,.02,0),.118,.015,.004),-sdCyl(c,.11,.1,.0)); r=U(U(vec2(brim,8.),vec2(cr,8.)),vec2(band,9.));}
+ else if(is(uHat,14.)){ float ring=max(sdCyl(c-vec3(0,.04,0),.12,.04,.005),-sdCyl(c,.105,.2,.0)); float a=atan(c.z,c.x); float sp=abs(fract(a/6.2832*8.)-.5); float pk=max(sdCyl(c-vec3(0,.09,0),.12,.05,.0),-sdCyl(c,.105,.2,.0)); pk=max(pk,c.y-.06-.08*(1.-sp*2.)); r=vec2(min(ring,pk),11.); vec3 g=c-vec3(0,.05,.122); r=U(r,vec2(length(g)-.015,15.));}
+ return r;
+}
+vec2 headG(vec3 p){
+ vec3 q=p;q.x=abs(q.x);
+ vec3 R0=hr();
+ float head=sdE(p-vec3(0,1.64,.01),R0);
+ vec3 jr=is(uFace,3.)?vec3(.095,.065,.085):(is(uFace,1.)?vec3(.09,.065,.085):vec3(.08,.065,.08));
+ head=smin(head,sdE(p-vec3(0,1.57,.04),jr),.045);
+ head=smin(head,sdE(q-vec3(R0.x,1.635,0),vec3(.02,.034,.017)),.015);
+ head=smin(head,sdE(p-vec3(0,1.618,.122),vec3(.019,.028,.024)),.025);
+ if(uSex>.5) head=smin(head,sdE(p-vec3(0,1.585,.115),vec3(.022,.01,.012)),.01);
+ vec2 r=vec2(head,1.);
+ if(uSex<.5){
+  if(is(uBeard,2.)||is(uBeard,3.)) r=U(r,vec2(sdC(q,vec3(.0,1.603,.122),vec3(.035,1.597,.112),.01),2.));
+  if(is(uBeard,3.)) r=U(r,vec2(sdE(p-vec3(0,1.535,.1),vec3(.02,.03,.02)),2.));
+  if(is(uBeard,4.)){ float b=sdE(p-vec3(0,1.56,.05),vec3(.1,.08,.085)); b=max(b,p.y-1.6); b=smin(b,sdC(q,vec3(.0,1.603,.122),vec3(.04,1.595,.11),.012),.01); r=U(r,vec2(b,2.));}
+  if(is(uBeard,5.)) r=U(r,vec2(sdE(q-vec3(.1,1.6,.04),vec3(.015,.045,.03)),2.));
+  if(is(uBeard,6.)){ float b=sdE(p-vec3(0,1.555,.045),vec3(.098,.075,.085)); b=max(b,p.y-1.58); b=max(b,-sdE(p-vec3(0,1.6,.1),vec3(.07,.06,.07))); r=U(r,vec2(b,2.));}
+ }
+ r=U(r,hairG(p,q));
+ r=U(r,vec2(sdE(q-vec3(.04,1.652,.114),vec3(.016,.021,.011)),6.));
+ float bt=is(uBrow,3.)?.011:(is(uBrow,4.)?.005:.0075);
+ vec3 b0=vec3(.022,1.692,.118),b1=vec3(.06,1.69,.106);
+ if(is(uBrow,1.)){b0.y-=.01;b1.y+=.005;} if(is(uBrow,2.)){b0.y+=.004;b1.y-=.004;}
+ r=U(r,vec2(sdC(q,b0,b1,bt),7.));
+ if(is(uBrow,2.)) r=U(r,vec2(sdC(q,b0+vec3(.019,.008,0),b1,bt),7.));
+ if(is(uGlass,1.)){ float g=sdRB(q-vec3(.042,1.652,.128),vec3(.028,.016,.004),.006); g=min(g,sdC(p,vec3(-.015,1.656,.13),vec3(.015,1.656,.13),.004)); g=min(g,sdC(q,vec3(.07,1.656,.122),vec3(.115,1.656,.0),.004)); r=U(r,vec2(g,10.));}
+ if(is(uGlass,2.)){ vec3 e=q-vec3(.042,1.652,.126); float g=length(vec2(length(e.xy)-.026,e.z))-.0035; g=min(g,sdC(p,vec3(-.016,1.656,.13),vec3(.016,1.656,.13),.003)); g=min(g,sdC(q,vec3(.068,1.656,.122),vec3(.115,1.656,.0),.003)); r=U(r,vec2(g,11.));}
+ if(is(uGlass,3.)){ float g=sdE(q-vec3(.042,1.648,.127),vec3(.03,.022,.006)); r=U(r,vec2(g,10.)); float f=min(sdC(p,vec3(-.03,1.664,.132),vec3(.03,1.664,.132),.003),sdC(q,vec3(.07,1.66,.122),vec3(.115,1.656,.0),.003)); r=U(r,vec2(f,11.));}
+ if(is(uGlass,4.)){ float g=sdE(p-vec3(0,1.652,.06),vec3(.125,.018,.085)); g=max(g,-(p.z-.04)); r=U(r,vec2(g,10.));}
+ if(is(uExtra,3.)) r=U(r,vec2(length(p-vec3(-R0.x-.005,1.6,.0))-.009,11.));
+ r=U(r,hatG(p));
+ return r;
+}
+vec2 bodyG(vec3 p){
+ vec3 q=p;q.x=abs(q.x);
+ float sw=uSex>.5?.93:1.;
+ float legs=min(sdC2(q,vec3(.1,.98,0),vec3(.105,.5,.01),.085,.07),sdC2(q,vec3(.105,.5,.01),vec3(.105,.1,-.01),.068,.056));
+ vec2 r=vec2(legs,4.);
+ if(is(uPantsT,4.)){ float sk=sdC2(q,vec3(.105,.5,.01),vec3(.105,.1,-.01),.06,.05); sk=max(sk,p.y-.5); r=U(vec2(max(legs,.48-p.y),4.),vec2(sk,1.)); }
+ float shoe;
+ if(is(uShoesT,1.)){ shoe=min(sdE(q-vec3(.108,.06,.045),vec3(.068,.06,.135)),sdCyl(q-vec3(.106,.12,0.),.065,.07,.03)); }
+ else if(is(uShoesT,2.)){ shoe=sdE(q-vec3(.108,.045,.05),vec3(.06,.045,.14)); }
+ else if(is(uShoesT,3.)){ shoe=sdRB(q-vec3(.108,.012,.04),vec3(.05,.006,.12),.008); }
+ else shoe=sdE(q-vec3(.108,.055,.045),vec3(.066,.056,.135));
+ shoe=max(shoe,-p.y);
+ r=U(r,vec2(shoe,5.));
+ if(is(uShoesT,3.)){ float ft=sdE(q-vec3(.108,.04,.05),vec3(.045,.035,.11)); ft=max(ft,-p.y); r=U(r,vec2(ft,1.)); }
+ bool longC=is(uCtype,0.);
+ vec3 t=p-vec3(0,1.2,0);
+ float w=(.115+.045*smoothstep(-.1,.28,t.y))*sw; if(uSex>.5) w*=1.+.18*smoothstep(.0,-.25,t.y)*0.;
+ float torso=sdRB(t,vec3(w,.22,.06),.07);
+ torso=smin(torso,sdE(q-vec3(.17*sw,1.4,0),vec3(.085,.06,.085)),.06);
+ if(longC){ float fl=.02*smoothstep(1.,.5,p.y); float skirt=sdRB(p-vec3(0,.8,0),vec3(.13+fl,.2,.035+fl*.5),.07); skirt=smax(skirt,-sdRB(p-vec3(0,.6,.12),vec3(.006,.2,.05),.0),.01); torso=smin(torso,skirt,.05);}
+ if(is(uCtype,5.)) torso=smin(torso,sdE(p-vec3(0,1.47,-.08),vec3(.12,.07,.07)),.04);
+ if(uSex>.5) torso=smin(torso,sdE(q-vec3(.06,1.3,.05),vec3(.06,.055,.04)),.04);
+ bool sleeveless=is(uCtype,8.);
+ bool shortS=is(uCtype,7.);
+ float armL=sdC2(p,vec3(.215*sw,1.39,0),vec3(.255*sw,1.12,-.02),.064,.056);
+ float fL=sdC2(p,vec3(.255*sw,1.12,-.02),vec3(.25*sw,.88,.05),.055,.047);
+ float armR=sdC2(p,vec3(-.215*sw,1.39,0),vec3(-.37*sw,1.15,-.04),.064,.056);
+ float fR=sdC2(p,vec3(-.37*sw,1.15,-.04),vec3(-.235*sw,1.0,.035),.055,.047);
+ float upper=min(armL,armR), fore=min(fL,fR);
+ float coatD=smin(torso,sleeveless?1e3:(shortS?upper:smin(upper,fore,.03)),.035);
+ r=U(r,vec2(coatD,3.));
+ if(sleeveless){ r=U(r,vec2(smin(upper,fore,.03),14.)); }
+ if(shortS){ r=U(r,vec2(fore,1.)); }
+ if(uBelt>.5&&!longC){ float bl=max(sdCyl(p-vec3(0,.93,0),.15,.025,.01),-sdCyl(p-vec3(0,.93,0),.12,.1,.0)); bl=sdE(p-vec3(0,.93,0),vec3(.205,.028,.105))-.0; bl=max(bl,-sdE(p-vec3(0,.93,0),vec3(.17,.1,.08))); r=U(r,vec2(bl,12.)); r=U(r,vec2(sdRB(p-vec3(0,.93,.1),vec3(.025,.018,.008),.004),11.));}
+ float hand=min(sdE(p-vec3(.25*sw,.82,.06),vec3(.042,.06,.038)),sdE(p-vec3(-.215*sw,1.0,.04),vec3(.045,.05,.04)));
+ r=U(r,vec2(hand,17.));
+ float neck=sdC(p,vec3(0,1.42,0),vec3(0,1.53,.005),.058);
+ r=U(r,vec2(neck,1.));
+ if(is(uCtype,5.)||is(uCtype,3.)||is(uCtype,9.)){ float col=sdTor(p-vec3(0,1.45,-.005),.07,.02); r=U(r,vec2(col,3.)); }
+ if(is(uExtra,5.)){ float sc=sdTor(p-vec3(0,1.46,0),.075,.03); sc=min(sc,sdC(p,vec3(.04,1.44,.08),vec3(.07,1.2,.1),.02)); r=U(r,vec2(sc,15.)); }
+ if(is(uExtra,6.)) r=U(r,vec2(sdTor((p-vec3(.25*sw,.9,.055)).xzy,.045,.009),11.));
+ if(is(uBagT,2.)){ float bp=sdRB(p-vec3(0,1.18,-.16),vec3(.13,.16,.05),.04); float st=min(sdC(q,vec3(.11,1.42,.04),vec3(.13,1.05,.08),.012),1e3); r=U(r,vec2(min(bp,st),13.)); }
+ if(is(uBagT,3.)){ float bb=sdE(p-vec3(0,.96,.12),vec3(.1,.045,.035)); r=U(r,vec2(bb,13.)); }
+ if(is(uBagT,1.)){ float bb=sdRB(p-vec3(.24,.88,.05),vec3(.075,.06,.03),.015); float st=sdC(p,vec3(-.13,1.42,.075),vec3(.21,.93,.1),.01); r=U(r,vec2(min(bb,st),13.)); }
+ return r;
+}
+vec2 map(vec3 p){
+ float bb=sdC(p,vec3(0,.25,0),vec3(0,1.75,0),.42); if(bb>.08) return vec2(bb,0.);
+ p.xz=rot(ROT)*p.xz;
+ if(uSex>.5){ p=(p-vec3(0,0,0))/.965; }
+ vec2 r=bodyG(p);
+ if(length(p-vec3(0,1.66,0))<.55){
+  const float HS=1.13;
+  vec2 hg=headG((p-HC)/HS+HC);hg.x*=HS;
+  if(hg.y<1.5&&r.y<1.5) r.x=smin(r.x,hg.x,.03); else r=U(r,hg);
+ }
+ if(uSex>.5) r.x*=.965;
+ return r;
+}
+vec3 nor(vec3 p){vec2 e=vec2(.0008,0);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float shadow(vec3 ro,vec3 rd){float res=1.,t=.01;for(int i=0;i<24;i++){float h=map(ro+rd*t).x;res=min(res,10.*h/t);t+=clamp(h,.02,.12);if(res<.001||t>2.)break;}return clamp(res,0.,1.);}
+float ao(vec3 p,vec3 n){float s=0.,w=1.;for(int i=1;i<5;i++){float h=.025*float(i);s+=(h-map(p+n*h).x)*w;w*=.7;}return clamp(1.-3.*s,0.,1.);}
+vec3 albedo(float m,vec3 p0){
+ vec3 pp=p0;pp.xz=rot(ROT)*pp.xz; if(uSex>.5) pp/=.965;
+ vec3 hp=(pp-HC)/1.13+HC;
+ if(m<1.5){
+  // face decals in head space
+  vec3 sk=cSkin;
+  if(hp.y>1.45){
+   if(is(uMask,1.)&&hp.y<1.615&&hp.z>-.02) return vec3(.55,.08,.1);
+   if(is(uMask,2.)&&!(abs(hp.y-1.652)<.022&&hp.z>.05)) return vec3(.05,.05,.06);
+   if(is(uMask,3.)&&hp.z>-.02) { if(length(vec2(abs(hp.x)-.042,hp.y-1.652))<.026) return vec3(.04); return vec3(.9,.88,.82);}
+   if(is(uMask,4.)&&hp.z>.04&&abs(hp.y-1.655)<.04) return vec3(.86,.62,.18);
+   float my=1.583+2.2*hp.x*hp.x; if(is(uMouth,1.)) my=1.583+4.5*hp.x*hp.x-.002; if(is(uMouth,2.)) my=1.585; if(is(uMouth,3.)) my=1.583+1.5*hp.x*hp.x+.12*hp.x;
+   float mw=uSex>.5?.007:.0045;
+   if(hp.z>.07&&hp.y<1.61&&abs(hp.x)<.034&&abs(hp.y-my)<mw) return uSex>.5?cLip:sk*vec3(.55,.32,.3);
+   if(uSex<.5&&is(uBeard,1.)&&hp.y<1.6&&hp.z>-.02) sk=mix(sk,cHair,.28);
+   if(is(uExtra,1.)&&abs((hp.x-.06)+(hp.y-1.63)*.3)<.004&&hp.y>1.6&&hp.y<1.67&&hp.z>.05) return sk*vec3(.7,.4,.4);
+   if(is(uExtra,7.)&&length(vec2(hp.x-.05,hp.y-1.6))<.006&&hp.z>.05) return vec3(.23,.14,.1);
+   if(is(uExtra,8.)&&hp.z>.07&&hp.y>1.61&&hp.y<1.64&&abs(hp.x)>.03&&abs(hp.x)<.075&&fract(hp.x*120.+hp.y*80.)<.25&&fract(hp.y*130.)<.4) return sk*.78;
+   if(is(uExtra,9.)&&length(vec2(hp.x-.042,hp.y-1.652))<.04&&hp.z>.04) sk=mix(sk,vec3(.35,.2,.4),.45);
+   if(is(uExtra,10.)&&abs(hp.y-1.715)<.012&&abs(hp.x-.03)<.03&&hp.z>.05) return vec3(.86,.79,.65);
+  } else if(is(uExtra,4.)&&pp.y>1.4&&pp.x<-.02) { if(fract(pp.y*40.)<.5) return sk*.55; }
+  return sk;
+ }
+ if(m<2.5) return cHair;
+ if(m<3.5){
+  bool vt=!(is(uCtype,5.)||is(uCtype,3.)||is(uCtype,7.));
+  float vw=max(0.,(pp.y-1.10))*.3, lw=vw+.035;
+  if(vt&&pp.z>.03&&pp.y>1.12&&pp.y<1.47&&abs(pp.x)<vw){
+    float tw=.022+.012*smoothstep(1.4,1.18,pp.y);
+    if(uTie>.5&&uTie<3.5&&abs(pp.x)<tw&&pp.y<1.43) return cTie;
+    if(is(uTie,4.)&&pp.y>1.4&&abs(pp.x)<.045*(.4+abs(pp.x)*14.)) return cTie;
+    if(is(uExtra,2.)&&abs(pp.y-(1.25+18.*pp.x*pp.x))<.006) return vec3(.85,.65,.2);
+    return cShirt;}
+  if(vt&&pp.z>.03&&pp.y>1.08&&pp.y<1.47&&abs(pp.x)<lw&&!is(uCtype,8.)) return cCoat*.72;
+  if(is(uCtype,3.)){ if(pp.z>.05&&abs(pp.x)<.004) return vec3(.8); if(abs(abs(pp.x)-.3)<.012&&pp.y<1.4&&pp.y>.9) return vec3(.9); }
+  if(is(uCtype,5.)){ if(pp.z>.05&&pp.y>1.25&&pp.y<1.42&&abs(abs(pp.x)-.03)<.004) return vec3(.9); if(pp.z>.05&&pp.y>.95&&pp.y<1.1&&abs(pp.x)<.1) return cCoat*.8;}
+  if(is(uCtype,7.)&&pp.z>.05&&pp.y>1.35&&abs(pp.x)<.004) return cCoat*.6;
+  if(!vt&&is(uExtra,2.)&&pp.z>.04&&abs(pp.y-(1.38+12.*pp.x*pp.x))<.006&&abs(pp.x)<.07) return vec3(.85,.65,.2);
+  if(pp.z>.05&&abs(pp.x)<.012&&(abs(pp.y-1.08)<.012||abs(pp.y-0.98)<.012)&&vt) return cCoat*.4;
+  if(is(uCtype,4.)&&fract(pp.y*14.)<.12) return cCoat*.7;
+  if(is(uCtype,1.)||is(uCtype,9.)) return cCoat;
+  return cCoat;}
+ if(m<4.5){ if(is(uPantsT,2.)&&abs(abs(pp.x)-.105)>.06&&abs(abs(pp.x)-.105)<.075) return vec3(.92); if(is(uPantsT,1.)&&abs(pp.y-.66)<.06&&abs(pp.x)>.13) return cPants*.75; return cPants;}
+ if(m<5.5){ if(is(uShoesT,0.)&&pp.y<.025) return vec3(.92,.9,.86); return cShoes;}
+ if(m<6.5) return cEye*.6;
+ if(m<7.5) return cHair*.9;
+ if(m<8.5) return cHat1;
+ if(m<9.5) return cHat2;
+ if(m<10.5) return vec3(.03,.03,.04);
+ if(m<11.5) return vec3(.85,.64,.2);
+ if(m<12.5) return cBelt;
+ if(m<13.5) return cBag;
+ if(m<14.5) return cShirt;
+ if(m<15.5) return cHat3;
+ if(m<16.5) return vec3(.92);
+ return cHand;
+}
+void main(){
+ vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;
+ vec3 ta,ro;float fl;
+ if(MODE<.5){ta=vec3(0,.93,0);ro=vec3(0,1.5,5.2);fl=2.42;}
+ else {ta=vec3(0,1.63,0);ro=vec3(0,1.75,3.2);fl=4.5;}
+ vec3 f=normalize(ta-ro),rr=normalize(cross(f,vec3(0,1,0))),u=cross(rr,f);
+ vec3 rd=normalize(f*fl+uv.x*rr+uv.y*u);
+ float t=MODE<.5?4.:2.4,m=-1.;
+ for(int i=0;i<120;i++){vec2 h=map(ro+rd*t);if(h.x<.0006){m=h.y;break;}t+=h.x*.95;if(t>7.)break;}
+ if(m<0.){gl_FragColor=vec4(0);return;}
+ vec3 p=ro+rd*t,n=nor(p),a=albedo(m,p);
+ a=pow(a,vec3(2.2));
+ vec3 L=normalize(vec3(-.55,.75,.6)),L2=normalize(vec3(.8,.35,-.6));
+ float dif=max(dot(n,L),0.)*shadow(p+n*.003,L);
+ float occ=ao(p,n);
+ float wrap=(m<1.5)?max(dot(n,L)*.5+.5,0.)*.25:0.;
+ float rim=pow(clamp(1.+dot(n,rd),0.,1.),5.)*max(dot(n,L2)*.6+.4,0.);
+ float sky=.5+.5*n.y;
+ vec3 col=a*(1.9*dif*vec3(1.,.96,.9)+wrap*vec3(1.,.5,.4)+.5*sky*occ*vec3(.55,.62,.75))+rim*vec3(.95,.72,.29)*.45*occ;
+ vec3 h=normalize(L-rd);
+ float sp=(m>5.5&&m<6.5)?80.:((m>10.5&&m<11.5)?60.:((m>9.5&&m<10.5)?90.:((m>4.5&&m<5.5)?40.:18.)));
+ float ks=(m>5.5&&m<6.5)?.9:((m>10.5&&m<11.5)?.8:((m>9.5&&m<10.5)?.9:((m>4.5&&m<5.5)?.35:(m<1.5?.08:.05))));
+ col+=pow(max(dot(n,h),0.),sp)*dif*ks*((m>10.5&&m<11.5)?vec3(1.,.85,.5):vec3(1.));
+ col=col/(1.+col*.35);
+ col=pow(col,vec3(1./2.2));
+ gl_FragColor=vec4(col,1.);
+}`;
+let gl=null,cv=null,pr=null,st=0,ext=null;const U={},cache=new Map(),Q=new Map();
+const hx=h=>{h=h||"#888888";return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);};
+const sh=(t,s)=>{const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);return x;};
+function warm(){ if(st) return; st=1; try{ cv=document.createElement("canvas"); cv.width=cv.height=8; gl=cv.getContext("webgl",{preserveDrawingBuffer:true,premultipliedAlpha:false,alpha:true,antialias:false,powerPreference:"low-power"}); if(!gl){ st=-1; return; }
+  cv.addEventListener("webglcontextlost",e=>{ e.preventDefault(); st=-1; });
+  ext=gl.getExtension("KHR_parallel_shader_compile");
+  pr=gl.createProgram(); gl.attachShader(pr,sh(gl.VERTEX_SHADER,"attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}")); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr);
+  const done=()=>{ if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){ st=-1; return; } gl.useProgram(pr); const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW); const l=gl.getAttribLocation(pr,"p"); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0); st=2; pump(); };
+  if(ext){ const poll=()=>{ if(gl.getProgramParameter(pr,ext.COMPLETION_STATUS_KHR)) done(); else setTimeout(poll,60); }; poll(); } else done();
+ }catch(e){ st=-1; } }
+const u=n=>U[n]||(U[n]=gl.getUniformLocation(pr,n));
+const HATC={1:["#14151A","#1F2026","#7A1D22"],2:["#2C2E37","#2C2E37","#2C2E37"],3:["#7A1D22","#7A1D22","#7A1D22"],4:["#6A553F","#3B2D22","#3B2D22"],5:["#7A1D22","#7A1D22","#7A1D22"],6:["#30323A","#44464F","#44464F"],7:["#CBBFA3","#B7A98C","#B7A98C"],8:["#0B0B0E","#0B0B0E","#7A1D22"],9:["#4A4238","#4A4238","#4A4238"],10:["#5A5044","#5A5044","#5A5044"],11:["#8E1E26","#8E1E26","#8E1E26"],12:["#E0A92E","#E0A92E","#E0A92E"],13:["#7C5430","#3A2412","#3A2412"],14:["#E0A92E","#E0A92E","#B3372E"]};
+const KEYS=["sex","skin","face","eyes","brow","mouth","beard","style","hair","hat","glasses","extra","mask","coat","ctype","shirt","tie","pants","shoes","belt","gloves","bag"];
+const key=(l,mode,w,h)=>mode+w+"x"+h+":"+KEYS.map(k=>l[k]??"").join(",");
+function draw(l,mode,w,h){
+  cv.width=w; cv.height=h; gl.viewport(0,0,w,h);
+  const pt=(PANTS[l.pants]||PANTS[0]), sh2=(SHOES[l.shoes]||SHOES[0]), bl=BELTS[l.belt], gv=GLOVES[l.gloves], bg=BAGS[l.bag], hc=HATC[l.hat]||HATC[1];
+  const tieC=["#8E1E26","#8E1E26","#0E0F13","#C9A24A","#7A1D22"][l.tie]||"#8E1E26";
+  const C={cSkin:SKINS[l.skin],cHair:HAIRS[l.hair],cCoat:COATS[l.coat],cShirt:SHIRTS[l.shirt],cTie:tieC,cPants:pt[0],cShoes:sh2[0],cBelt:bl?bl[0]:"#222222",cBuckle:bl?bl[1]:"#999999",cHand:gv||SKINS[l.skin],cEye:EYES[l.eyes]||EYES[0],cBag:bg?bg[1]:"#333333",cLip:"#A9272C",cHat1:hc[0],cHat2:hc[1],cHat3:hc[2]};
+  for(const k in C) gl.uniform3fv(u(k),hx(C[k]));
+  const F={uSex:l.sex==="f"?1:0,uFace:l.face|0,uStyle:l.style|0,uBeard:l.beard|0,uHat:l.hat|0,uGlass:l.glasses|0,uCtype:l.ctype|0,uTie:l.ctype===3?0:(l.tie|0),uPantsT:{j:0,c:1,t:2,d:3,s:4}[pt[1]]||0,uShoesT:{k:0,b:1,d:2,s:3}[sh2[1]]||0,uBelt:bl?1:0,uBagT:bg?{c:1,p:2,b:3}[bg[0]]||0:0,uMouth:l.mouth|0,uBrow:l.brow|0,uExtra:l.extra|0,uMask:l.mask|0,MODE:mode==="full"?0:1,ROT:mode==="full"?.22:.18};
+  for(const k in F) gl.uniform1f(u(k),F[k]);
+  gl.uniform2f(u("R"),w,h);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLES,0,3);
+  let url=null; try{ url=cv.toDataURL("image/png"); }catch{}
+  return url; }
+function render(l,mode,w,h){ const k=key(l,mode,w,h); if(cache.has(k)) return cache.get(k); if(st!==2) return null; const url=draw(l,mode,w,h); if(!url) return null; if(cache.size>120) cache.delete(cache.keys().next().value); cache.set(k,url); return url; }
+let pumping=0, onDone=null;
+function pump(){ if(pumping||st!==2||!Q.size) return; pumping=1; requestAnimationFrame(()=>{ pumping=0; const [k,a]=Q.entries().next().value; Q.delete(k); const url=render(...a); if(url&&onDone) onDone(k,a,url); pump(); }); }
+function want(l,mode,w,h){ const k=key(l,mode,w,h); if(cache.has(k)) return cache.get(k); if(st===0) setTimeout(warm,0); if(st>=0&&!Q.has(k)) Q.set(k,[l,mode,w,h]); pump(); return null; }
+return {render,want,warm,key,ready:()=>st===2,failed:()=>st<0,onDone:f=>{onDone=f;}};
+})();
+
+const _avatar2D=avatar;
+function h3dWrap(l,url,vb){ const [bg,gl]=BACKS[l.bg]||BACKS[0], id="h"+Math.random().toString(36).slice(2,8); return `<svg viewBox="0 0 100 ${vb}" role="img" aria-label="${vb===240?"Персонаж в полный рост":"Персонаж"}"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${gl}" stop-opacity=".35"/><stop offset="1" stop-color="${bg}" stop-opacity="0"/></linearGradient></defs><rect width="100" height="${vb}" fill="${bg}"/><rect width="100" height="${vb}" fill="url(#${id})"/>${vb===240?'<ellipse cx="50" cy="229" rx="32" ry="5" fill="#000" opacity=".45"/>':""}<image href="${url}" x="0" y="0" width="100" height="${vb}" preserveAspectRatio="xMidYMid meet"/></svg>`; }
+avatar=function(l0,big){ if(big==="head"||H3D.failed()) return _avatar2D(l0,big); const l={...LOOK0,...l0}, mode=big==="full"?"full":"bust", vb=big==="full"?240:(big?120:100), w=mode==="full"?280:(big?220:150), h=Math.round(w*vb/100);
+  const url=big?(H3D.render(l,mode,w,h)||H3D.want(l,mode,w,h)):H3D.want(l,mode,w,h);
+  if(url) return h3dWrap(l,url,vb);
+  return _avatar2D(l0,big).replace("<svg ",`<svg data-h3k="${H3D.key(l,mode,w,h)}" `); };
+H3D.onDone((k,a,url)=>{ document.querySelectorAll("svg[data-h3k]").forEach(el=>{ if(el.getAttribute("data-h3k")!==k) return; const vb=+el.getAttribute("viewBox").split(" ")[3]; el.outerHTML=h3dWrap(a[0],url,vb); }); });
+setTimeout(()=>H3D.warm(),1200);
 /* Creation */
 let draft=null, cTab=0;
 const CTABS=[["Лицо",[["sex","Пол",[{t:"Мужчина",v:"m"},{t:"Женщина",v:"f"}]],["skin","Кожа",SKINS.map(c=>({c}))],["face","Форма лица",["Овал","Широкое","Узкое","Квадратное","Круглое"]],["eyes","Глаза",EYES.map(c=>({c}))],["brow","Брови",["Ровные","Хмурые","Дугой","Густые","Тонкие"]],["mouth","Рот",["Спокойный","Улыбка","Строгий","Ухмылка"]],["beard","Борода",["Нет","Щетина","Усы","Эспаньолка","Полная","Бакенбарды","Шкиперская"]]]],
@@ -1620,7 +1900,7 @@ function drawProfile(){
    stat:grp("Работа",[["Рейсы такси",st.rides],["Смен",st.shifts],["Заработано",rub(st.earned)],["Время в игре",playTime(st.played)],["Проехано",st.km.toFixed(1)+" км"]])+grp("Бизнес",[["Доход бизнесов",rub(st.bizIncome)],["Куплено",st.bought],["Выкуплено",st.takeovers],["Продано",st.sold],["Оборот",rub(st.turnover)],["Улучшений",st.upgrades]])+grp("Проверки",[["Вызвано",st.checksSent],["Удачных",st.checksHit],["Со штрафов",rub(st.reward)],["У тебя",st.checksOnMe],["Пройдено чисто",st.checksPassed],["Штрафы",rub(st.fines)],["Документы",st.docs],["Подкупы",st.bribes]]),
    own:`${S.car?`<div class="card"><h3>Транспорт</h3>${carSvg(CAR_BY[S.car])}<div class="offerLine"><strong>${CAR_BY[S.car][1]}</strong><span class="muted">престиж ${S.prestige}</span></div></div>`:""}`+(mine.length?mine.map(b=>{const bad=b.kind?0:violations(S.biz[b.id]).length;return `<button class="ownRow" data-open="${b.id}"><span class="noteI">${icoOf(b)}</span><span><strong>${b.name}</strong><br><span class="${bad?"no":"ok"}">${bad?`Нет документов: ${bad}`:b.kind?"Район":"Документы в порядке"}</span></span><span class="num">${rub(incomeOf(b))}</span></button>`}).join(""):`<div class="card"><p class="muted">Пока ничего нет. Заработай ${rub(4500)} и купи свободный бизнес на карте.</p></div>`),
    set:`<div class="card"><h3>Звук</h3><button class="toggle" id="tMusic">Музыка <b>${opt("music")?"вкл":"выкл"}</b></button><button class="toggle" id="tSfx">Звуки <b>${opt("sfx")?"вкл":"выкл"}</b></button></div><button class="btn" id="editHero">Изменить персонажа</button><button class="btn" id="goMenu">Главное меню</button><button class="btn" id="resetBtn">Начать заново</button>`};
-  $("profileView").innerHTML=`<div ${pAttr(p.look)}><div class="ava full" style="${aStyle(p.look)}">${avatar(p.look,"full")}</div><div class="heroInfo"><div class="nick">${esc(p.nick)}${cloud.on?goldTick(cloud.id):""}</div>${tgLink(myLook(),true)}${cloud.on&&isTeam(cloud.id)?`<div class="rankChip">Фракция разработчиков</div> `:""}<div class="rankChip">${legalNow().n}</div> ${cloud.title?`<div class="rankChip">${esc(cloud.title)}</div> `:""}<button class="idBtn" data-tab="levels">Уровень ${levelOf(S.xp)} из ${MAX_LEVEL}</button> <div class="rankChip">${RANKS[r][1]}</div><button class="idBtn" id="copyId" aria-label="Скопировать ID">ID ${myId()} ⧉</button> <button class="btn small" data-tab="settings">⚙️ Настройки</button><p class="muted">${ROLES[p.role].name} · ${S.faction==="police"?"Полиция":"Предприниматели"}<br>в городе с ${new Date(p.born).toLocaleDateString("ru-RU")}<br>Приглашено друзей: ${S.refs||0}${S.paroleUntil>Date.now()?"<br><b>Условка</b>":""}</p></div></div>
+  $("profileView").innerHTML=`<div ${pAttr(p.look)}><div class="ava full" style="${aStyle(p.look)}">${avatar(p.look,"full")}</div><div class="heroInfo"><div class="nick">${esc(p.nick)}${cloud.on?goldTick(cloud.id):""}</div>${tgLink(myLook(),true)}${cloud.on&&isTeam(cloud.id)?`<div class="rankChip">Фракция разработчиков</div> `:""}<div class="rankChip">${legalNow().n}</div> ${cloud.title?`<div class="rankChip">${esc(cloud.title)}</div> `:""}<button class="idBtn" data-tab="levels">Уровень ${levelOf(S.xp)} из ${MAX_LEVEL}</button> <div class="rankChip">${RANKS[r][1]}</div><button class="idBtn" id="copyId" aria-label="Скопировать ID">ID ${myId()} ⧉</button> <button class="btn small" data-tab="settings">⚙️ Настройки</button><p class="muted">${ROLES[p.role].name} · ${S.faction==="police"?"Полиция":"Предприниматели"}<br>${p.born&&!isNaN(new Date(p.born))?`в городе с ${new Date(p.born).toLocaleDateString("ru-RU")}<br>`:""}Приглашено друзей: ${S.refs||0}${S.paroleUntil>Date.now()?"<br><b>Условка</b>":""}</p></div></div>
    ${S.lastJail?`<div class="card"><h3>Последнее задержание</h3><div class="kv"><span>Причина</span><b>${esc(S.lastJail.why)}</b><span>Срок</span><b>${Math.ceil(S.lastJail.sec/60)} мин</b></div></div>`:""}<div class="segs">${[["main","Обзор"],["stat","Статистика"],["own","Имущество"]].map(([k,n])=>`<button class="${k===pTab?"on":""}" data-ptab="${k}">${n}</button>`).join("")}</div>${tabs[pTab]}`;
 }
 
@@ -2174,7 +2454,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub(incomeNow())}/мин</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
- ["151","8 ноября 2026",["Новая карта: весь край ночью в 3D. Дома с горящими окнами, фонари вдоль дорог, парки и реки. Приблизь карту до упора, чтобы рассмотреть город.","Новая фоновая музыка: спокойный ночной лоу-фай, мелодия каждый раз немного разная.","Новый интерфейс: объёмные кнопки и панели, новые шрифты и цвета.","Над доходом появился график. Зелёный, когда спрос хороший, красный со стрелкой вниз, когда спрос падает."]],
+ ["151","8 ноября 2026",["Новая карта: весь край ночью в 3D. Дома с горящими окнами, фонари вдоль дорог, парки и реки. Приблизь карту до упора, чтобы рассмотреть город.","Новая фоновая музыка: спокойный ночной лоу-фай, мелодия каждый раз немного разная.","Персонаж теперь объёмный, в 3D: всё, что надето, видно на нём в профиле, витрине и чате.","Новый интерфейс: объёмные кнопки и панели, новые шрифты и цвета.","Над доходом появился график. Зелёный, когда спрос хороший, красный со стрелкой вниз, когда спрос падает."]],
  ["150","8 ноября 2026",["Награды за уровни, задания и обучение уменьшены вдвое вместе с остальной экономикой."]],
  ["149","8 ноября 2026",["Биржа: разделы «Продаёт собственник», «Свободные бизнесы» и «Все бизнесы». Улучшения бизнеса теперь остаются при продаже и переходят новому хозяину.","Секретари в «Ещё»: сами пополняют запасы, продлевают документы и гасят коммуналку. Стоят 35% твоего дохода.","Спрос растёт, пока ты в игре, и падает, пока тебя нет. Максимум 110%.","Сети: несколько одинаковых бизнесов дают до +20% к выручке, ещё до +5% дают такие же бизнесы у других игроков.","Новые номера в ГАИ: прокручивай отдельно цифры, буквы и регион и забирай, когда понравится. Красивые номера стали реже.","После обновления игра сама показывает, что нового."]],
  ["147","8 ноября 2026",["Реформа экономики: все цены, доходы и балансы уменьшены вдвое. Тем, кто покупал деньги за звёзды, вернём половину купленного.","Районы стали дешевле: окупаются за 8–16 часов. Каждый район даёт право на 2 бизнеса: 1 район — 2 бизнеса, 2 района — 4 и так далее.","Жильё от 15 млн ₽, в Невинномысске 22 млн ₽, в Ставрополе 30 млн ₽. Улучшения дешевле.","+40 новых бизнесов, больше всего промышленных гигантов.","Запасов в бизнесе хватает на 2 часа.","Особая техника теперь покупается за 3000 звёзд."]],
@@ -2496,8 +2776,8 @@ function hiTiles(){ const box=document.getElementById("mapHi")||(()=>{ const d=d
 function setZoom(i){
   const box=$("mapScroll"), cx=(box.scrollLeft+box.clientWidth/2)/box.scrollWidth, cy=(box.scrollTop+box.clientHeight/2)/box.scrollHeight;
   zoomAt=Math.max(0,Math.min(ZOOMS.length-1,i));
-  $("mapPlane").style.setProperty("--zoom",Math.max(1,ZOOMS[zoomAt]*MAPW/1150)); $("map").setAttribute("class","z"+zoomAt); hiTiles(); drawMap(); applyOpts();
-  box.scrollLeft=cx*box.scrollWidth-box.clientWidth/2; box.scrollTop=cy*box.scrollHeight-box.clientHeight/2;
+  $("mapPlane").style.setProperty("--zoom",Math.max(1,ZOOMS[zoomAt]*MAPW/1150)); $("map").setAttribute("class","z"+zoomAt); drawMap(); applyOpts();
+  void box.scrollWidth; box.scrollLeft=cx*box.scrollWidth-box.clientWidth/2; box.scrollTop=cy*box.scrollHeight-box.clientHeight/2; hiTiles(); requestAnimationFrame(()=>hiTiles());
 }
 $("zoomCity").addEventListener("click",()=>{ setZoom(0); });
 (()=>{ const box=$("mapScroll"), pl=$("mapPlane"), zf=i=>Math.max(1,ZOOMS[i]*MAPW/1150); box.style.touchAction="pan-x pan-y"; let g=null;
@@ -3001,7 +3281,7 @@ async function admBizLoad(){ const box=$("aBizList"); if(!box) return; adb.rows=
 function admBizDraw(){ const box=$("aBizList"); if(!box) return; const f=adb.f.toLowerCase(), l=adb.rows.filter(x=>(adb.kind==="all"||(adb.kind==="busy"&&x.tg)||(adb.kind==="free"&&!x.tg)||x.kind===adb.kind)&&(!f||x.name.toLowerCase().includes(f)||(x.owner||"").toLowerCase().includes(f)||String(x.tg||"").includes(f))); const busy=adb.rows.filter(x=>x.tg).length; box.innerHTML=`<p class="muted">Занято ${busy} из ${adb.rows.length}. Показано: ${l.length}.</p>${l.map(x=>`<div class="jrRow"><div class="jrTop"><strong>${esc(x.name)}</strong><span class="jrAmt">${x.price?rub(x.price):"аукцион"}</span></div><div class="jrTop">${x.tg?`<button class="jrNick" data-biz-who="${x.tg}">${esc(x.owner||"Игрок")}</button>`:'<span class="muted">Свободно</span>'}<span class="muted">${x.inc?`${rub(x.inc)}/мин`:""}</span></div>${x.kind==="civic"&&x.id!=="zolton"?"":`<button class="btn small" data-biz-give="${x.id}">Выдать игроку</button>`}</div>`).join("")||'<p class="muted">Ничего не нашлось.</p>'}`; }
 $("adminView").addEventListener("input",e=>{ if(e.target.id==="aBizFind"){ adb.f=e.target.value.trim(); admBizDraw(); } });
 $("adminView").addEventListener("click",e=>{ const k=e.target.closest("[data-biz-kind]"); if(k){ adb.kind=k.dataset.bizKind; document.querySelectorAll("[data-biz-kind]").forEach(b=>b.classList.toggle("on",b===k)); return admBizDraw(); } const w=e.target.closest("[data-biz-who]"); if(w) openReal(w.dataset.bizWho); });
-$("adminView").addEventListener("click",async e=>{ const b=e.target.closest("[data-sz]"); if(!b||b.disabled) return; const [k,v]=b.dataset.sz.split(":"), why=$("szWhy").value.trim(); if(why.length<3) return toast("Укажи причину."); b.disabled=true; try{ if(k==="prop") await api("admin_seize",{id:v,why}); else await api("admin_cmd",{tg_id:aSel,cmd:{takeCar:v,why}}); toast("Изъято. Игрок получит уведомление."); assetsLoad(); }catch(er){ b.disabled=false; toast(`Не получилось (${errText(er)}).`); } });
+$("adminView").addEventListener("click",async e=>{ const b=e.target.closest("[data-sz]"); if(!b||b.disabled) return; const [k,v]=b.dataset.sz.split(":"), why=($("szWhy")||{value:""}).value.trim(); if(why.length<3){ const w=$("szWhy"); if(w){ w.focus(); w.classList.add("bad"); w.scrollIntoView({block:"center"}); } return toast("Сначала напиши причину изъятия (от 3 букв)."); } b.disabled=true; try{ if(k==="prop"){ await api("admin_seize",{id:v,why}); if(S.biz[v]){ S.biz[v].owner=null; S.biz[v].ownerNick=null; } if(DISTRICTS.some(d=>d.id===v)&&S.districts&&S.districts[v]) S.districts[v].owner=null; drawMap(); toast("Изъято: точка свободна, игрок получит уведомление."); } else { await api("admin_cmd",{tg_id:aSel,cmd:{takeCar:v,why}}); toast("Транспорт изъят. У игрока он исчезнет при следующем входе в игру."); } const row=b.closest(".row"); if(row){ row.style.opacity=".45"; b.textContent="Изъято"; } setTimeout(assetsLoad,1500); }catch(er){ b.disabled=false; toast(`Не получилось (${errText(er)}).`); } });
 $("adminView").addEventListener("click",async e=>{ const b=e.target.closest("[data-rep]"); if(!b) return; b.disabled=true; try{ await api("admin_report_done",{id:b.dataset.rep}); cloud.reports=cloud.reports.filter(x=>String(x.id)!==b.dataset.rep); $("aReports").innerHTML=repHtml(); toast("Отмечено"); }catch{ b.disabled=false; toast("Не получилось."); } });
 { const mn=Math.min(...DISTRICTS.map(d=>d.price)), f=9000000/mn; DISTRICTS.forEach(d=>{ d.price=Math.round(d.price*f/100000)*100000*3; d.inc=Math.round(d.inc*f*.4/10)*10; }); }
 BIG_PRICES.forEach(([id,p,i])=>{ BY[id].price=p; BY[id].inc=i; });
@@ -3070,7 +3350,7 @@ setInterval(()=>{ try{ if(!S||!S.player||document.hidden||!$("menu").hidden) ret
 /* Part 3: show «Что нового» on the first login after an update */
 const updNum=v=>parseInt(v,10)||0;
 function updShow(){ if(!S.player||$("updGate")) return; const v=UPDATES[0][0], dev=typeof cloud!=="undefined"&&cloud.dev; if(S.updSeen===v&&!dev) return; if(!S.updSeen&&!dev&&(S.stats.played||0)<300000){ S.updSeen=v; persist(); return; } const from=dev?146:updNum(S.updSeen||"0"), pages=[]; UPDATES.filter(([n])=>updNum(n)>from).slice(0,6).reverse().forEach(([n,d,x])=>x.forEach(t=>pages.push([n,d,t]))); if(from<151) pages.unshift(["hero"]); if(!pages.length){ S.updSeen=v; persist(); return; } let k=0; const g=document.createElement("div"); g.id="updGate"; g.setAttribute("role","dialog"); g.setAttribute("aria-modal","true"); g.setAttribute("aria-label","Что нового"); document.body.appendChild(g);
-  const draw=()=>{ const [n,d,t]=pages[k], last=k===pages.length-1, hero=n==="hero"; g.innerHTML=`<div class="updCard"><p class="updTop">Что нового · ${k+1} из ${pages.length}</p><div class="updDots">${pages.map((_,i)=>`<i class="${i<=k?"on":""}"></i>`).join("")}</div>${hero?`<h2 class="updHero">Новое оформление игры</h2><div class="updShots"><img src="maps/news/n1.webp" alt="Ставрополь ночью издалека"><img src="maps/news/n2.webp" alt="Квартал с освещёнными улицами"><img src="maps/news/n3.webp" alt="Дома и деревья вблизи"></div><ul class="updList"><li>Весь край нарисован заново: ночной город в 3D по настоящей карте.</li><li>Дома с горящими окнами, фонари вдоль улиц, парки и реки.</li><li>Карту можно приблизить до отдельного дома.</li><li>Новый интерфейс: объёмные кнопки и панели.</li><li>График дохода: зелёный, когда спрос хороший, красный, когда падает.</li><li>Новая фоновая музыка.</li></ul>`:`<p class="muted">Версия ${esc(n)} · ${esc(d)}</p><p class="updText">${t}</p>`}<div class="updBtns">${k?'<button class="btn" data-upd="back">Назад</button>':""}<button class="btn main" data-upd="${last?"done":"next"}">${last?"Понятно, закрыть":"Далее"}</button></div></div>`; g.querySelector('[data-upd="next"],[data-upd="done"]').focus(); };
+  const draw=()=>{ const [n,d,t]=pages[k], last=k===pages.length-1, hero=n==="hero"; g.innerHTML=`<div class="updCard"><p class="updTop">Что нового · ${k+1} из ${pages.length}</p><div class="updDots">${pages.map((_,i)=>`<i class="${i<=k?"on":""}"></i>`).join("")}</div>${hero?`<h2 class="updHero">Новое оформление игры</h2><div class="updShots"><img src="maps/news/n1.webp" alt="Ставрополь ночью издалека"><img src="maps/news/n2.webp" alt="Квартал с освещёнными улицами"><img src="maps/news/n3.webp" alt="Дома и деревья вблизи"></div><ul class="updList"><li>Весь край нарисован заново: ночной город в 3D по настоящей карте.</li><li>Дома с горящими окнами, фонари вдоль улиц, парки и реки.</li><li>Карту можно приблизить до отдельного дома.</li><li>Персонаж стал объёмным, в 3D.</li><li>Новый интерфейс: объёмные кнопки и панели.</li><li>График дохода: зелёный, когда спрос хороший, красный, когда падает.</li><li>Новая фоновая музыка.</li></ul>`:`<p class="muted">Версия ${esc(n)} · ${esc(d)}</p><p class="updText">${t}</p>`}<div class="updBtns">${k?'<button class="btn" data-upd="back">Назад</button>':""}<button class="btn main" data-upd="${last?"done":"next"}">${last?"Понятно, закрыть":"Далее"}</button></div></div>`; g.querySelector('[data-upd="next"],[data-upd="done"]').focus(); };
   g.addEventListener("click",e=>{ const b=e.target.closest("[data-upd]"); if(!b) return; const a=b.dataset.upd; if(a==="next"&&k<pages.length-1){ k++; draw(); } else if(a==="back"&&k>0){ k--; draw(); } else if(a==="done"){ S.updSeen=v; persist(); cloudSave(); g.remove(); } });
   g.addEventListener("keydown",e=>{ if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); } }); draw(); }
 
