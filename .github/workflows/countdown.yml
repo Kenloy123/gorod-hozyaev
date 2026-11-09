@@ -7,6 +7,10 @@ on:
         description: "Служебное: id уже отправленного поста с таймером (оставь пустым)"
         required: false
         default: ""
+      post:
+        description: "Текст поста перед таймером (HTML), можно оставить пустым"
+        required: false
+        default: ""
 
 permissions:
   actions: write
@@ -21,6 +25,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
       MSG_ID: ${{ github.event.inputs.message_id }}
+      POST: ${{ github.event.inputs.post }}
     steps:
       - name: Запустить таймер в канале
         shell: python
@@ -62,6 +67,11 @@ jobs:
                   print("relay:", r.status)
 
           mid = (os.environ.get("MSG_ID") or "").strip()
+          post = (os.environ.get("POST") or "").strip()
+          if post and not mid:
+              p = api("sendMessage", chat_id=CHANNEL, text=post, parse_mode="HTML", disable_web_page_preview="true")
+              if not p.get("ok"):
+                  raise SystemExit(f"Не удалось отправить пост: {p.get('description')}")
           if not mid:
               sent = api("sendMessage", chat_id=CHANNEL, text=text())
               if not sent.get("ok"):
