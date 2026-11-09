@@ -543,6 +543,12 @@ body { font-family: var(--body); }
 .hudAvatar { border-radius: 14px; border: 1.5px solid #2C384A; box-shadow: none; background: #1A2230; }
 #hudNick { font-weight: 800; letter-spacing: -.01em; }
 .hudMoney { grid-template-columns: 1fr 1fr; gap: 8px; }
+.hudMoney.f3 { grid-template-columns: 1.25fr 1fr .8fr !important; }
+#fuelBox { cursor: pointer; }
+#fuelBox .fuelBar { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 3px; border-radius: 2px; background: #2B2D36; overflow: hidden; }
+#fuelBox .fuelBar i { display: block; height: 100%; width: 100%; background: #58C78A; }
+#fuelBox.low #fuel { color: #FF4D4D; }
+#fuelBox.low .fuelBar i { background: #FF4D4D; }
 .hudMoney div { padding: 8px 12px; background: #111720; border: 1px solid #1E2733; border-radius: 12px; position: relative; }
 .hudMoney small { font-size: 11px; letter-spacing: .02em; text-transform: none; color: var(--ash); }
 #money { font: 700 18px/1.2 var(--mono); color: var(--bone); }
@@ -621,7 +627,7 @@ nav button.on { color: var(--lamp); box-shadow: inset 0 2px 0 var(--lamp); backg
     <button class="hudAvatar" id="hudAvatar" aria-label="Главное меню"></button>
     <div class="hudMain"><span id="hudNick"></span><span id="hudRank"></span><div class="hudBar"><i id="hudBar"></i></div></div>
     <div class="hudBtns"><button class="iconBtn" id="sndBtn" aria-label="Музыка"></button><button class="iconBtn" id="menuBtn" aria-label="Меню"></button><button class="iconBtn" id="bell" aria-label="Уведомления">🔔<span id="bellCount" hidden></span></button></div>
-    <div class="hudMoney"><div><small>Баланс</small><span id="money"></span></div><div><small>Доход</small><span id="rate"></span></div></div>
+    <div class="hudMoney" id="hudMoney"><div><small>Баланс</small><span id="money"></span></div><div><small>Доход</small><span id="rate"></span></div><div id="fuelBox" role="button" tabindex="0" aria-label="Бак" hidden><small>Бак</small><span id="fuel"></span><b class="fuelBar"><i id="fuelBar"></i></b></div></div>
   </header>
   <main>
     <section class="view" id="mapView">
@@ -2273,16 +2279,35 @@ $("settingsView").addEventListener("click",e=>{
 
 /* Travel */
 let tripScale=1, trip=null;
+/* Fuel */
+const FUEL_TRIP=10, FUEL_FAR=20, FUEL_FAR_M=12000;
+const hasMotor=()=>{ const c=S&&S.car&&CAR_BY[S.car]; return !!(c&&c[8]>0); };
+const tankNow=()=>{ if(!hasMotor()) return 100; const t=S.tank&&S.tank[S.car]; return t==null?100:Math.max(0,Math.min(100,t)); };
+const fuelNeed=m=>hasMotor()?(m>FUEL_FAR_M?FUEL_FAR:FUEL_TRIP):0;
+const fuelFull=()=>{ const L=(typeof cloud!=="undefined"&&cloud.league)||1; return L<=1?1000:Math.round(LG_T[L-1]*.002); };
+const fuelCost=()=>Math.ceil(fuelFull()*(100-tankNow())/100/10)*10;
+const isFuelBiz=b=>!!b&&!b.civic&&(/fuel/.test(b.id)||/^АЗС/.test(b.name||""));
+function useFuel(n){ S.tank=S.tank||{}; S.tank[S.car]=Math.max(0,tankNow()-n); drawFuel(); }
+function drawFuel(){ const bx=$("fuelBox"), hm=$("hudMoney"); if(!bx||!hm||!S) return; const on=hasMotor(); bx.hidden=!on; hm.classList.toggle("f3",on); if(!on) return; const t=Math.round(tankNow()); $("fuel").textContent=`⛽ ${t}%`; $("fuelBar").style.width=t+"%"; bx.classList.toggle("low",t<FUEL_TRIP*2); }
+function nearFuel(){ return BIZ.filter(isFuelBiz).sort((a,b)=>Math.hypot(a.x-S.pos[0],a.y-S.pos[1])-Math.hypot(b.x-S.pos[0],b.y-S.pos[1]))[0]; }
+function fuelHtml(b){ if(!hasMotor()) return `<div class="card"><h3>⛽ Заправка</h3><p class="muted">${S.car?"Твоему транспорту бензин не нужен.":"Заправка нужна машинам и мотоциклам. Выбери транспорт в профиле."}</p></div>`;
+  const t=Math.round(tankNow()), c=fuelCost(), trips=Math.floor(t/FUEL_TRIP);
+  return `<div class="card"><h3>⛽ Заправка</h3><div class="facts"><div><span class="muted">В баке</span><b class="${t<FUEL_TRIP*2?"no":""}">${t}%</b></div><div><span class="muted">Полный бак</span><b>${rub(fuelFull())}</b></div></div><p class="muted">Хватит примерно на ${trips} ${trips%10===1&&trips%100!==11?"поездку":[2,3,4].includes(trips%10)&&![12,13,14].includes(trips%100)?"поездки":"поездок"}. Поездка по городу — ${FUEL_TRIP}% бака, в другой город — ${FUEL_FAR}%. Цена зависит от лиги.</p>${t>=100?'<p class="ok">Бак полный.</p>':atPlace(b.id)?`<button class="btn main" data-fuel="fill">Заправить до полного — ${rub(c)}</button>`:'<p class="muted">Приезжай на АЗС, чтобы заправиться.</p>'}</div>`; }
+{ const ds0=drawSheet; drawSheet=function(){ ds0(); try{ const b=openId&&BY[openId]; if(!isFuelBiz(b)) return; const sh=$("sheet"), hd=sh.querySelector(".sheetHead"); if(!hd) return; const box=document.createElement("div"); box.innerHTML=fuelHtml(b); hd.after(box.firstElementChild); }catch(e){ console.error(e); } }; }
+$("sheet").addEventListener("click",e=>{ const x=e.target.closest("[data-fuel]"); if(!x) return; e.stopPropagation(); if(!hasMotor()||!openId||!atPlace(openId)) return; const c=fuelCost(); if(!c) return toast("Бак уже полный."); if(S.money<c) return toast(`Нужно ${rub(c)}.`); const oc=ledgerCtx; ledgerCtx="Бензин: заправка"; S.money-=c; ledgerCtx=oc; S.tank=S.tank||{}; S.tank[S.car]=100; sfx.cash(); toast(`Бак полный ⛽ −${rub(c)}`); persist(); drawHud(); drawSheet(); });
+{ const fb=()=>{ const t=Math.round(tankNow()), n=nearFuel(); toast(`В баке ${t}%: хватит примерно на ${Math.floor(t/FUEL_TRIP)} поезд.${n?" Ближайшая АЗС открыта.":""}`); if(n) openBiz(n.id); }; setTimeout(()=>{ const bx=$("fuelBox"); if(bx){ bx.addEventListener("click",fb); bx.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" ") fb(); }); } }); }
+{ const dh0=drawHud; drawHud=function(){ dh0(); try{ drawFuel(); }catch{} }; }
 function atPlace(id){ return [BY[id],...CIVIC.filter(c=>c.fn===id)].filter(Boolean).some(b=>Math.hypot(S.pos[0]-(b.x??b.lx),S.pos[1]-(b.y??b.ly))<=14); }
 function travelBtn(b){ return `<button class="btn main" data-route="${b.id}">${S.car?"🚗":"🚶"} Поехать</button>`; }
 function farHtml(b){ const r=findRoute(S.pos,[b.x??b.lx,b.y??b.ly]), m=r.px*M_PER_PX, sp=carSpeed()||5; return `<div class="card"><p>Чтобы взаимодействовать, нужно приехать сюда.</p><p class="muted">${fmtKm(m)}, ${S.car?CAR_BY[S.car][1]:"пешком"}: примерно ${Math.max(1,Math.round(m/1000/sp*60))} с в игре.</p></div>`; }
 function startRoute(id){ { const L=CIVIC.filter(c=>c.fn===id); if(L.length){ L.push(BY[id]); id=L.sort((a,b)=>Math.hypot(a.x-S.pos[0],a.y-S.pos[1])-Math.hypot(b.x-S.pos[0],b.y-S.pos[1]))[0].id; } }
   if(trip) return toast("Ты уже в пути.");
   if(atPlace(id)){ return; }
-  const b=BY[id], to=[b.x??b.lx,b.y??b.ly], r=findRoute(S.pos,to), m=r.px*M_PER_PX, sp=carSpeed()||5, sec=Math.max(2,m/1000/sp*60)*tripScale;
+  const b=BY[id], to=[b.x??b.lx,b.y??b.ly], r=findRoute(S.pos,to), m=r.px*M_PER_PX, fNeed=fuelNeed(m), foot=!S.car||(fNeed>0&&tankNow()<fNeed), sp=foot?5:(carSpeed()||5), sec=Math.max(2,m/1000/sp*60)*tripScale;
+  if(S.car&&fNeed>0){ if(foot) notify("bad","Бензин закончился","Идёшь пешком. Заправься на любой АЗС."); else useFuel(fNeed); }
   routeLine=[S.pos,...r.pts,to]; closeSheet(); showTab("map"); drawMap();
   const L=[0]; for(let i=1;i<routeLine.length;i++) L.push(L[i-1]+Math.hypot(routeLine[i][0]-routeLine[i-1][0],routeLine[i][1]-routeLine[i-1][1]));
-  $("routeBar").innerHTML=`<div class="routeHead"><div><span class="muted">Едем: ${esc(b.name)}</span><br><b>${fmtKm(m)}</b> <span class="muted">${S.car?"🚗 "+CAR_BY[S.car][1]:"🚶 пешком"}: <span id="tripLeft"></span> с</span></div><button class="close" id="routeClose" aria-label="Отменить поездку">✕</button></div><div class="track"><i id="tripBar"></i></div><div class="routeSteps">${esc(r.names.join(" → ")||"По местным проездам")}</div>`;
+  $("routeBar").innerHTML=`<div class="routeHead"><div><span class="muted">Едем: ${esc(b.name)}</span><br><b>${fmtKm(m)}</b> <span class="muted">${!foot?"🚗 "+CAR_BY[S.car][1]:"🚶 пешком"}: <span id="tripLeft"></span> с</span></div><button class="close" id="routeClose" aria-label="Отменить поездку">✕</button></div><div class="track"><i id="tripBar"></i></div><div class="routeSteps">${esc(r.names.join(" → ")||"По местным проездам")}</div>`;
   $("routeBar").hidden=false;
   const t0=performance.now(), base=S.pos.slice(); let last=-1;
   trip={id,timer:setInterval(()=>{
@@ -2552,7 +2577,7 @@ function billLive(){ const a=$("billNext"); if(!a) return; a.textContent=billClo
 function drawBills(){ const w=S.billWarn||0, d=S.billDebt||0; $("billsView").innerHTML=`<h2>Коммуналка</h2><p class="muted">Каждый час игры автоматически списывается 20% дохода всех твоих бизнесов за этот час. Не хватило денег: предупреждение. После 5 предупреждений один случайный бизнес слетит, и об этом узнают все.</p><div class="card"><div class="kv"><span>Следующий счёт через</span><b id="billNext">${billClock()}</b><span>Доход бизнесов сейчас</span><b>${rub((incomeNow())*60)}/час</b><span>Начислено за этот час</span><b id="billSum">${rub(billNow())}</b><span>Предупреждения</span><b class="${w?"no":"ok"}">${w} из 5</b><span>Долг</span><b class="${d?"no":""}">${rub(d)}</b></div>${d?`<button class="btn main" id="billPay">Погасить долг ${rub(d)}</button><p class="muted">Погасишь долг, и предупреждения снимутся.</p>`:""}</div>`; }
 $("billsView").addEventListener("click",e=>{ if(e.target.id!=="billPay") return; const d=S.billDebt||0; if(S.money<d) return toast(`Нужно ${rub(d)}.`); S.money-=d; S.billDebt=0; S.billWarn=0; toast("Долг погашен, предупреждения сняты"); persist(); cloudSave(); drawHud(); drawBills(); });
 const UPDATES=[
- ["162","10 ноября 2026",["Казино «Полночь» уходит с молотка! Это самый доходный объект в игре — 60 млн ₽ в час — и оно одно на все лиги. Хозяина выберет аукцион: следи за «Ещё» → «Аукционы». Играть в казино по-прежнему могут все.","Кредиты: сроки стали в 3 раза длиннее (30, 90 и 180 минут), чтобы их можно было вернуть из дохода.","Казино: максимальная ставка зависит от лиги — от 8 000 ₽ в 1 лиге до 100 млн ₽ в 10-й.","Пакеты денег за звёзды уменьшены в 2 раза.","Доход теперь показывается в час.","Экономика замедлена в 3 раза: доход бизнесов, районов, клуба и школ, зарплата на работе, в банде и в полиции, награды за обучение. Документы, проверки, штрафы и наём тоже стали в 3 раза дешевле, поэтому бизнесы остаются в плюсе. Цены бизнесов не изменились: окупаются дольше, и каждая покупка теперь весомее."]],
+ ["162","10 ноября 2026",["Бензин! У машин и мотоциклов теперь есть бак: виджет «Бак» вверху рядом с балансом. Полного бака хватает примерно на 10 поездок по городу, поездка в другой город тратит вдвое больше. Заправиться можно на любой АЗС, цена зависит от лиги. Если бак пуст, едешь пешком. Самокатам и велосипедам бензин не нужен.","Казино «Полночь» уходит с молотка! Это самый доходный объект в игре — 60 млн ₽ в час — и оно одно на все лиги. Хозяина выберет аукцион: следи за «Ещё» → «Аукционы». Играть в казино по-прежнему могут все.","Кредиты: сроки стали в 3 раза длиннее (30, 90 и 180 минут), чтобы их можно было вернуть из дохода.","Казино: максимальная ставка зависит от лиги — от 8 000 ₽ в 1 лиге до 100 млн ₽ в 10-й.","Пакеты денег за звёзды уменьшены в 2 раза.","Доход теперь показывается в час.","Экономика замедлена в 3 раза: доход бизнесов, районов, клуба и школ, зарплата на работе, в банде и в полиции, награды за обучение. Документы, проверки, штрафы и наём тоже стали в 3 раза дешевле, поэтому бизнесы остаются в плюсе. Цены бизнесов не изменились: окупаются дольше, и каждая покупка теперь весомее."]],
  ["161","10 ноября 2026",["Рядом с ником каждого игрока кружок с номером его лиги. В рейтинге новая вкладка «Лиги»: лучшие игроки каждой лиги.","Лиги! В игре теперь 10 экономических лиг по капиталу: от «Новичков» до «Легенд». В каждой лиге свои бизнесы, районы, биржа, номера и банды. Новички больше не соревнуются с миллиардерами.","Когда капитал доходит до порога, ты сам переходишь в следующую лигу: бизнесы прошлой лиги продаются государству за 100% стоимости вместе с улучшениями. Подробности в «Ещё» → «Лиги».","Чем больше игроков в лиге, тем больше бизнесов открывается на её карте. Заводы появляются с 5 лиги, торговые центры с 7, промышленные гиганты с 9.","Рейтинг хозяев теперь внутри своей лиги."]],
  ["160","10 ноября 2026",["Исправлено: деньги за проданный номер, переводы и подарки больше не теряются, если игра перезапустилась в момент получения.","Исправлено: статус ООО и покупка районов — лимит бизнесов теперь большее из двух: по статусу или по 2 места за район."]],
  ["159","8 ноября 2026",["Донатные бизнесы снова приносят доход и улучшаются: от 300 000 ₽ до 2 000 000 ₽ в минуту."]],
