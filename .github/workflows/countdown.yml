@@ -2,13 +2,25 @@ name: Таймер обновы
 
 on:
   workflow_dispatch:
+    inputs:
+      message_id:
+        description: "Служебное: id уже отправленного поста с таймером (оставь пустым)"
+        required: false
+        default: ""
+
+permissions:
+  actions: write
+  contents: read
 
 jobs:
   countdown:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 350
     env:
       TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      MSG_ID: ${{ github.event.inputs.message_id }}
     steps:
       - name: Запустить таймер в канале
         shell: python
@@ -20,6 +32,8 @@ jobs:
           CHANNEL = "@gorodhoz"
           MSK = timezone(timedelta(hours=3))
           TARGET = datetime(2026, 11, 10, 10, 0, tzinfo=MSK)
+          STARTED = time.time()
+          LIMIT = 5 * 3600 + 30 * 60  # GitHub держит запуск до 6 часов, поэтому передаём эстафету новому запуску
 
           def api(method, **params):
               data = urllib.parse.urlencode(params).encode()
@@ -37,19 +51,31 @@ jobs:
               minutes = (left + 59) // 60
               hours, mins = divmod(minutes, 60)
               when = f"{hours} ч {mins} мин" if hours else f"{mins} мин"
-              return f"⏳ До обновы осталось: {when}\n\nВыход сегодня в 10:00 по МСК"
+              day = "сегодня" if TARGET.date() == datetime.now(MSK).date() else "завтра"
+              return f"⏳ До обновы осталось: {when}\n\nВыход {day} в {TARGET:%H:%M} по МСК"
 
-          sent = api("sendMessage", chat_id=CHANNEL, text=text())
-          if not sent.get("ok"):
-              raise SystemExit(f"Не удалось отправить пост: {sent.get('description')}")
-          mid = sent["result"]["message_id"]
+          def relay(mid):
+              body = json.dumps({"ref": "main", "inputs": {"message_id": str(mid)}}).encode()
+              req = urllib.request.Request(f"https://api.github.com/repos/{os.environ['REPO']}/actions/workflows/countdown.yml/dispatches", body, method="POST",
+                                           headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json"})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  print("relay:", r.status)
+
+          mid = (os.environ.get("MSG_ID") or "").strip()
+          if not mid:
+              sent = api("sendMessage", chat_id=CHANNEL, text=text())
+              if not sent.get("ok"):
+                  raise SystemExit(f"Не удалось отправить пост: {sent.get('description')}")
+              mid = sent["result"]["message_id"]
 
           while True:
-              done = datetime.now(MSK) >= TARGET
-              if done:
+              if datetime.now(MSK) >= TARGET:
                   api("editMessageText", chat_id=CHANNEL, message_id=mid, text=text())
+                  break
+              if time.time() - STARTED > LIMIT:
+                  relay(mid)
                   break
               time.sleep(min(60, max(1, (TARGET - datetime.now(MSK)).total_seconds())))
               r = api("editMessageText", chat_id=CHANNEL, message_id=mid, text=text())
-              if not r.get("ok"):
+              if not r.get("ok") and "not modified" not in str(r.get("description")):
                   print("edit:", r.get("description"))
