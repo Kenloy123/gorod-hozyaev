@@ -19,7 +19,7 @@ jobs:
           TOKEN = os.environ["TG_BOT_TOKEN"].strip()
           CHANNEL = "@gorodhoz"
           MSK = timezone(timedelta(hours=3))
-          TARGET = datetime(2026, 11, 6, 17, 0, tzinfo=MSK)
+          TARGET = datetime(2026, 11, 10, 10, 0, tzinfo=MSK)
 
           def api(method, **params):
               data = urllib.parse.urlencode(params).encode()
@@ -37,7 +37,7 @@ jobs:
               minutes = (left + 59) // 60
               hours, mins = divmod(minutes, 60)
               when = f"{hours} ч {mins} мин" if hours else f"{mins} мин"
-              return f"⏳ До обновы осталось: {when}\n\nВыход сегодня в 17:00 по МСК"
+              return f"⏳ До обновы осталось: {when}\n\nВыход сегодня в 10:00 по МСК"
 
           sent = api("sendMessage", chat_id=CHANNEL, text=text())
           if not sent.get("ok"):
