@@ -1,0 +1,34 @@
+name: Исправить пост в канале
+
+on:
+  workflow_dispatch:
+    inputs:
+      message_id:
+        description: "Номер поста (из ссылки t.me/gorodhoz/НОМЕР)"
+        required: true
+      text:
+        description: "Новый текст поста (HTML)"
+        required: true
+
+jobs:
+  edit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+      MSG_ID: ${{ github.event.inputs.message_id }}
+      TEXT: ${{ github.event.inputs.text }}
+    steps:
+      - name: Исправить пост
+        shell: python
+        run: |
+          import json, os, urllib.error, urllib.parse, urllib.request
+          data = urllib.parse.urlencode({"chat_id": "@gorodhoz", "message_id": os.environ["MSG_ID"].strip(), "text": os.environ["TEXT"], "parse_mode": "HTML", "disable_web_page_preview": "true"}).encode()
+          try:
+              with urllib.request.urlopen(f"https://api.telegram.org/bot{os.environ['TG_BOT_TOKEN'].strip()}/editMessageText", data, timeout=20) as r:
+                  res = json.load(r)
+          except urllib.error.HTTPError as e:
+              res = json.load(e)
+          if not res.get("ok"):
+              raise SystemExit(f"Не удалось исправить пост: {res.get('description')}")
+          print("ok")
