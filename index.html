@@ -9,10 +9,10 @@
 <meta name="theme-color" content="#0B0E1A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Город Хозяев">
 <script>(function(){ try{ var sa=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true; if(!sa) return; var de=document.documentElement; de.classList.add("pwa"); var fit=function(){ de.style.setProperty("--app-h",window.innerHeight+"px"); }; fit(); addEventListener("resize",fit); addEventListener("orientationchange",function(){ setTimeout(fit,300); }); }catch(e){} })();</script>
-<style>.pwa, .pwa body { height: var(--app-h, 100vh); } .pwa #app { height: var(--app-h, 100vh); } .pwa .hud { padding-top: calc(8px + env(safe-area-inset-top, 0px)); } .pwa .menuBody, .pwa .introBody, .pwa #createBody { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }</style>
+<style>.pwa, .pwa body { height: var(--app-h, 100vh); height: 100dvh; background: #14151B; } .pwa #app { height: var(--app-h, 100vh); height: 100dvh; } .pwa .hud { padding-top: calc(8px + env(safe-area-inset-top, 0px)); } .pwa .menuBody, .pwa .introBody, .pwa #createBody { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }</style>
 <title>Город Хозяев</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -553,6 +553,8 @@ body { font-family: var(--body); }
 .hudAvatar { border-radius: 14px; border: 1.5px solid #2C384A; box-shadow: none; background: #1A2230; }
 #hudNick { font-weight: 800; letter-spacing: -.01em; }
 .hudMoney { grid-template-columns: 1fr 1fr; gap: 8px; }
+.hud { padding-top: calc(8px + var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)); }
+.pwa .hud { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
 .hudMoney.f3 { grid-template-columns: 1.25fr 1fr .8fr !important; }
 #fuelBox { cursor: pointer; }
 #fuelBox .fuelBar { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 3px; border-radius: 2px; background: #2B2D36; overflow: hidden; }
