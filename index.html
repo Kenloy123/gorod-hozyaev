@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Город Хозяев">
+<script>(function(){ try{ var sa=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true; if(!sa) return; var de=document.documentElement; de.classList.add("pwa"); var fit=function(){ de.style.setProperty("--app-h",window.innerHeight+"px"); }; fit(); addEventListener("resize",fit); addEventListener("orientationchange",function(){ setTimeout(fit,300); }); }catch(e){} })();</script>
+<style>.pwa, .pwa body { height: var(--app-h, 100vh); } .pwa #app { height: var(--app-h, 100vh); } .pwa .hud { padding-top: calc(8px + env(safe-area-inset-top, 0px)); } .pwa .menuBody, .pwa .introBody, .pwa #createBody { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }</style>
 <title>Город Хозяев</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
