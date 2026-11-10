@@ -9,10 +9,10 @@
 <meta name="theme-color" content="#0B0E1A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Город Хозяев">
 <script>(function(){ try{ var sa=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true; if(!sa) return; var de=document.documentElement; de.classList.add("pwa"); var fit=function(){ de.style.setProperty("--app-h",window.innerHeight+"px"); }; fit(); addEventListener("resize",fit); addEventListener("orientationchange",function(){ setTimeout(fit,300); }); }catch(e){} })();</script>
-<style>.pwa, .pwa body { height: var(--app-h, 100vh); } .pwa #app { height: var(--app-h, 100vh); } .pwa .hud { padding-top: calc(8px + env(safe-area-inset-top, 0px)); } .pwa .menuBody, .pwa .introBody, .pwa #createBody { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }</style>
+<style>.pwa, .pwa body { height: var(--app-h, 100vh); height: 100dvh; background: #14151B; } .pwa #app { height: var(--app-h, 100vh); height: 100dvh; } .pwa .hud { padding-top: calc(8px + env(safe-area-inset-top, 0px)); } .pwa .menuBody, .pwa .introBody, .pwa #createBody { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }</style>
 <title>Город Хозяев</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -553,6 +553,8 @@ body { font-family: var(--body); }
 .hudAvatar { border-radius: 14px; border: 1.5px solid #2C384A; box-shadow: none; background: #1A2230; }
 #hudNick { font-weight: 800; letter-spacing: -.01em; }
 .hudMoney { grid-template-columns: 1fr 1fr; gap: 8px; }
+.hud { padding-top: calc(8px + var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)); }
+.pwa .hud { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
 .hudMoney.f3 { grid-template-columns: 1.25fr 1fr .8fr !important; }
 #fuelBox { cursor: pointer; }
 #fuelBox .fuelBar { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 3px; border-radius: 2px; background: #2B2D36; overflow: hidden; }
@@ -2526,18 +2528,24 @@ async function webLoginFlow(){
     return false;
   }
   if(sessGet()) return true;
+  if(!isStandalone()&&/android|iphone|ipad|ipod/i.test(navigator.userAgent||"")&&!new URLSearchParams(location.search).get("login")){ installFirstShow(); return false; }
   webLoginShow(""); return false;
 }
-function webLoginShow(err){ let g=$("webLogin"); if(!g){ g=document.createElement("div"); g.id="webLogin"; document.body.appendChild(g); }
+function installFirstShow(){ let g=$("webLogin"); if(!g){ g=document.createElement("div"); g.id="webLogin"; document.body.appendChild(g); } g.dataset.mode="install";
+  g.style.cssText="position:fixed;inset:0;z-index:9999;background:#0B0E1A;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;font-family:inherit;overflow:auto";
+  const ios=isIOS(), steps=ios?"<li>Нажми кнопку «Поделиться» (квадрат со стрелкой вверх) внизу экрана Safari.</li><li>Выбери «На экран Домой» и нажми «Добавить».</li><li>Открой игру с новой иконки и войди через Telegram — один раз.</li>":"<li>Нажми меню ⋮ в правом верхнем углу Chrome.</li><li>Выбери «Установить приложение» или «Добавить на главный экран».</li><li>Открой игру с новой иконки и войди через Telegram — один раз.</li>";
+  g.innerHTML=`<img src="icon-192.png" alt="" width="88" height="88" style="border-radius:20px"><h2 style="margin:4px 0">Установи игру на телефон</h2><p style="max-width:340px;opacity:.85;margin:0">Сначала поставь игру на главный экран, а войти через Telegram нужно будет уже в ней — один раз.</p>${installEvt&&!ios?`<button id="ifInstall" style="padding:14px 22px;border:0;border-radius:12px;background:#F2B84B;color:#0B0E1A;font-weight:800;font-size:16px">📲 Установить на главный экран</button><p style="opacity:.7;margin:0;max-width:340px">После установки открой игру с иконки и войди через Telegram.</p>`:`<ol style="text-align:left;max-width:340px;line-height:1.6;opacity:.9;margin:0;padding-left:20px">${steps}</ol>`}<a href="${SITE_URL}?login=1" style="color:#9aa3b8;font-size:14px;margin-top:8px">Играть в браузере без установки</a>`;
+  const b=$("ifInstall"); if(b) b.onclick=async()=>{ try{ installEvt.prompt(); await installEvt.userChoice; }catch{} installEvt=null; installFirstShow(); }; }
+function webLoginShow(err){ let g=$("webLogin"); if(!g){ g=document.createElement("div"); g.id="webLogin"; document.body.appendChild(g); } g.dataset.mode="login";
   g.style.cssText="position:fixed;inset:0;z-index:9999;background:#0B0E1A;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;font-family:inherit";
   g.innerHTML=`<img src="icon-192.png" alt="" width="96" height="96" style="border-radius:22px"><h2 style="margin:4px 0">Город Хозяев</h2><p style="max-width:340px;opacity:.85;margin:0">Войди через Telegram. Аккаунт, деньги и бизнесы — те же, что в игре в Telegram.</p>${err?`<p style="color:#FF6B6B;margin:0">${esc(err)}</p>`:""}<div id="tgLoginBox" style="min-height:48px"></div><p style="max-width:340px;opacity:.6;font-size:13px;margin:0">Нажми кнопку, подтверди вход в Telegram — и игра откроется.</p>`;
   const sc=document.createElement("script"); sc.async=true; sc.src="https://telegram.org/js/telegram-widget.js?22"; sc.setAttribute("data-telegram-login","citymastersgame_bot"); sc.setAttribute("data-size","large"); sc.setAttribute("data-radius","12"); sc.setAttribute("data-request-access","write"); sc.setAttribute("data-auth-url",SITE_URL+(new URLSearchParams(location.search).get("install")?"?install=1":"")); $("tgLoginBox").appendChild(sc); }
-let installEvt=null; addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); installEvt=e; try{ if(!$("installView").hidden) drawInstall(); }catch{} });
+let installEvt=null; addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); installEvt=e; try{ const g=$("webLogin"); if(g&&g.dataset.mode==="install") installFirstShow(); if(!$("installView").hidden) drawInstall(); }catch{} });
 addEventListener("appinstalled",()=>{ installEvt=null; toast("Игра установлена на главный экран!"); });
 if("serviceWorker" in navigator&&location.protocol==="https:") addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent||"");
 function drawInstall(){ const v=$("installView"); if(!v) return; let body;
-  if(inTg()) body=`<p>Игру можно поставить иконкой на главный экран телефона — она будет открываться как обычное приложение, без Telegram. Аккаунт и прогресс те же самые.</p><ol class="muted" style="padding-left:20px;line-height:1.6"><li>Нажми кнопку ниже — игра откроется в браузере телефона.</li><li>Нажми «Войти через Telegram» и подтверди вход.</li><li>Нажми «Установить на главный экран».</li></ol><button class="btn main" data-inst="open">📲 Открыть игру в браузере</button><p class="muted">Покупка за звёзды и уведомления останутся в Telegram.</p>`;
+  if(inTg()) body=`<p>Игру можно поставить иконкой на главный экран телефона — она будет открываться как обычное приложение, без Telegram. Аккаунт и прогресс те же самые.</p><ol class="muted" style="padding-left:20px;line-height:1.6"><li>Нажми кнопку ниже — игра откроется в браузере телефона.</li><li>Добавь её на главный экран по подсказке.</li><li>Открой игру с иконки и войди через Telegram — один раз.</li></ol><button class="btn main" data-inst="open">📲 Открыть игру в браузере</button><p class="muted">Покупка за звёзды и уведомления останутся в Telegram.</p>`;
   else if(isStandalone()) body=`<p class="ok">Игра уже установлена и открыта как приложение.</p><p class="muted">Звёзды оплачиваются в Telegram — игра сама откроет его, когда нажмёшь «Купить».</p>`;
   else if(installEvt) body=`<p>Поставь игру иконкой на главный экран — она будет открываться как обычное приложение.</p><button class="btn main" data-inst="prompt">📲 Установить на главный экран</button>`;
   else if(isIOS()) body=`<p>Как поставить игру на главный экран iPhone:</p><ol class="muted" style="padding-left:20px;line-height:1.6"><li>Открой эту страницу в <b>Safari</b>.</li><li>Нажми кнопку «Поделиться» (квадрат со стрелкой вверх) внизу экрана.</li><li>Выбери «На экран Домой» и нажми «Добавить».</li></ol>`;
