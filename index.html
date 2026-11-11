@@ -3165,7 +3165,7 @@ function showMenu(){
 const BOOT_K="gh.boot", bootGet=()=>{ try{ return JSON.parse(localStorage.getItem(BOOT_K)||"null"); }catch{ return null; } }, bootSet=v=>{ try{ v==null?localStorage.removeItem(BOOT_K):localStorage.setItem(BOOT_K,JSON.stringify(v)); }catch{} };
 const bootPrev=bootGet(); let safeMode=!!(bootPrev&&bootPrev.step&&bootPrev.step!=="ok");
 const bootStep=st=>{ const v=bootGet()||{}; v.step=st; v.t=Date.now(); v.n=(bootPrev&&bootPrev.n||0)+(st==="play"?1:0); bootSet(v); };
-function bootReport(){ if(!bootPrev||!safeMode||!S.player) return; try{ api("report_new",{text:`Авто-отчёт: игра закрылась при входе (шаг «${bootPrev.step}», попыток ${bootPrev.n||1}). Лига ${cloud.league}, бизнесов на карте ${BIZ.length}, музыка ${opt("music")?"вкл":"выкл"}. ${navigator.userAgent.slice(0,160)}`,level:levelOf(S.xp)}).catch(()=>{}); }catch{} }
+function bootReport(){ if(!bootPrev||!safeMode||!S.player) return; try{ api("report_new",{text:`Авто-отчёт: игра закрылась при входе (шаг «${bootPrev.step}», попыток ${bootPrev.n||1}). Лига ${cloud.league}, бизнесов на карте ${BIZ.length}, музыка ${opt("music")?"вкл":"выкл"}. Размер сохранения ${Math.round(JSON.stringify(compactSave()).length/1024)} КБ. Сеть: ${(()=>{ try{ return localStorage.getItem(NET_K)||"нет данных"; }catch{ return "?"; } })().slice(0,300)}. ${navigator.userAgent.slice(0,120)}`,level:levelOf(S.xp)}).catch(()=>{}); }catch{} }
 $("menuPlay").addEventListener("click",()=>{ bootStep("play");
   if(safeMode){ try{ S.audio=S.audio||{}; S.audio.music=false; S.opts=S.opts||{}; S.opts.motion=false; persist(); }catch{} bootReport(); }
   if(opt("music")) startMusic(); bootStep("music");
@@ -3187,11 +3187,14 @@ var SITE_URL=location.origin+location.pathname;
 const errText0=e=>({league:"этот игрок в другой лиге",net:"нет связи с сервером",auth:"вход устарел, перезапусти игру",server:"ошибка сервера",forbidden:"нет прав"}[e&&e.code]||(e&&e.code)||"ошибка в игре");
 const errText=e=>{ if(e&&e.code==="auth"&&!inTg()&&sessGet()){ sessSet(""); setTimeout(()=>location.reload(),1500); return "нужно войти заново"; } return errText0(e); };
 const API_ALT="https://functions.yandexcloud.net/d4ekstgrb2a25avdh44s";
+const NET_K="gh.net", netLog=(a,res)=>{ try{ const v=JSON.parse(localStorage.getItem(NET_K)||"{}"); const k=a+":"+res+(cloud.alt?"@alt":""); v[k]=(v[k]||0)+1; if(a==="save"&&res==="ok") v.lastOk=Date.now(); localStorage.setItem(NET_K,JSON.stringify(v)); }catch{} };
 async function api(action,extra){
   if(cloud.dev) return devApi(action,extra||{});
   const go=async()=>{ const c=new AbortController(), t=setTimeout(()=>c.abort(),15000); try{ return await fetch(cloud.alt?API_ALT:API_URL,{method:"POST",signal:c.signal,headers:{"content-type":"application/json"},body:JSON.stringify(initData()?{initData:initData(),action,...extra}:{session:sessGet(),action,...extra})}); } finally { clearTimeout(t); } };
   const safe=["load","team","market_list","players","chat","poll","profile","sale_list","admin_log","admin_reports","police_list"].includes(action), net=()=>Object.assign(new Error("net"),{code:"net"});
-  let r; try{ r=await go(); }catch{ cloud.alt=!cloud.alt; if(!safe) throw net(); await new Promise(z=>setTimeout(z,600)); try{ r=await go(); }catch{ throw net(); } }
+  const again=safe||["save","league_move","report_new"].includes(action); /* эти можно безопасно повторить через запасной сервер */
+  let r; try{ r=await go(); }catch{ cloud.alt=!cloud.alt; netLog(action,"net1"); if(!again) throw net(); await new Promise(z=>setTimeout(z,600)); try{ r=await go(); }catch{ netLog(action,"net2"); throw net(); } }
+  if(action==="save") netLog(action,r.ok?"ok":"http"+r.status);
   const d=await r.json().catch(()=>({})); if(!r.ok) throw Object.assign(new Error(d.error||"http"),{code:d.error||"http"+r.status}); return d;
 }
 function applyBoss(){ if(!S.player||!S.player.gang) return; const b=cloud.bosses.find(x=>x.gang===S.player.gang); if(b&&String(b.tg_id)===String(cloud.id)){ S.player.grole="boss"; S.gangs[S.player.gang].boss="you"; } else if(S.gangs[S.player.gang].boss==="you"||S.player.grole==="boss"){ S.player.grole="deputy"; S.gangs[S.player.gang].boss=null; } }
