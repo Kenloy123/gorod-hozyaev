@@ -1,0 +1,32 @@
+name: Пост в канал
+
+on:
+  workflow_dispatch:
+    inputs:
+      text:
+        description: "Текст поста (HTML)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    env:
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+      TEXT: ${{ github.event.inputs.text }}
+    steps:
+      - name: Отправить пост
+        shell: python
+        run: |
+          import json, os, urllib.error, urllib.parse, urllib.request
+          data = urllib.parse.urlencode({"chat_id": "@gorodhoz", "text": os.environ["TEXT"], "parse_mode": "HTML", "disable_web_page_preview": "true"}).encode()
+          try:
+              with urllib.request.urlopen(f"https://api.telegram.org/bot{os.environ['TG_BOT_TOKEN'].strip()}/sendMessage", data, timeout=20) as r:
+                  res = json.load(r)
+          except urllib.error.HTTPError as e:
+              res = json.load(e)
+          print("ok:", res.get("ok"), "message_id:", (res.get("result") or {}).get("message_id"), res.get("description") or "")
+          if not res.get("ok"):
+              raise SystemExit(1)
