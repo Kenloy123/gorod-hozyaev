@@ -58,5 +58,21 @@ jobs:
         if: env.BOT != ''
         run: supabase secrets set TG_BOT_TOKEN="$BOT" --project-ref "$REF" --yes
 
+      - name: 4. Подключить оплату и /start (webhook бота)
+        if: env.BOT != ''
+        shell: python
+        run: |
+          import hashlib, json, os, urllib.request
+          tok = os.environ["BOT"].strip()
+          secret = hashlib.sha256(("kozyr-hook:" + tok).encode()).hexdigest()[:48]
+          data = json.dumps({"url": f"https://{os.environ['REF']}.supabase.co/functions/v1/api",
+                             "secret_token": secret, "allowed_updates": ["message", "pre_checkout_query"],
+                             "drop_pending_updates": False}).encode()
+          req = urllib.request.Request(f"https://api.telegram.org/bot{tok}/setWebhook", data=data,
+                                       headers={"Content-Type": "application/json"}, method="POST")
+          r = json.loads(urllib.request.urlopen(req, timeout=30).read())
+          print("setWebhook:", r.get("ok"), r.get("description"))
+          if not r.get("ok"): raise SystemExit(1)
+
       - name: Итог
         run: echo "Сервер Козыря залит ✅"

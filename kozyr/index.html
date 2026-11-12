@@ -332,7 +332,7 @@ button{font:inherit;cursor:pointer;border:0}
     <h3>Купить фишки</h3>
     <p>Пополнение через Telegram Stars ⭐</p>
     <div class="packs" id="packs"></div>
-    <div class="note">⚠️ Черновик: оплата Stars подключится, когда игра переедет в Telegram-бота.<br>Сейчас кнопки начисляют фишки бесплатно — для теста.</div>
+    <div class="note" id="shopNote"></div>
   </div>
 </div>
 
@@ -476,10 +476,11 @@ function renderLobby(){
 function takeBonus(){if(ONL)return onBonus();if(S.lastBonus+864e5>Date.now())return;S.lastBonus=Date.now();S.balance+=2000;save();renderLobby();toast('+2 000 фишек!')}
 const PACKS=[{c:5000,st:15},{c:25000,st:50,hot:1},{c:100000,st:150},{c:500000,st:500}];
 function openShop(){
+ $('shopNote').innerHTML=ONL?'Оплата через Telegram Stars ⭐ — фишки придут сразу после оплаты.<br>Фишки игровые, вывести их нельзя.':'⚠️ Оплата работает, когда игра открыта в Telegram-боте.<br>Здесь кнопки начисляют фишки бесплатно — для теста.';
  $('packs').innerHTML=PACKS.map((p,i)=>`<button class="pack${p.hot?' hot':''}" onclick="buy(${i})"><b>${fmt(p.c)}</b><small>фишек${p.hot?' · хит':''}</small><div class="pr">${p.st} ⭐</div></button>`).join('');
  open_('mShop');
 }
-function buy(i){if(ONL){close_('mShop');toast('Покупка за Telegram Stars появится совсем скоро ⭐');return}S.balance+=PACKS[i].c;save();updBal();renderLobby();close_('mShop');toast('Начислено '+fmt(PACKS[i].c)+' фишек (тест)')}
+function buy(i){if(ONL)return buyStars(i);S.balance+=PACKS[i].c;save();updBal();renderLobby();close_('mShop');toast('Начислено '+fmt(PACKS[i].c)+' фишек (тест)')}
 function openRules(){open_('mRules')}
 
 /* ===== Карты и оценка рук ===== */
@@ -1542,6 +1543,34 @@ function setOnl(n){$('onlBar').innerHTML=n?`<b>●</b> Сейчас в игре:
 async function ping(){if(!ONL||document.hidden)return;const j=await api('ping').catch(()=>({}));if(j.online)setOnl(j.online)}
 setInterval(ping,60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping()});
+
+
+/* ===== покупка фишек за Stars ===== */
+let buying=false;
+async function buyStars(i){
+ if(buying)return;buying=true;
+ const tg=window.Telegram&&Telegram.WebApp;
+ try{
+  const j=await api('invoice',{pack:'p'+(i+1)});
+  if(!j.link){toast('Не получилось создать оплату, попробуй ещё раз');return}
+  if(!tg||!tg.openInvoice){toast('Обнови Telegram, чтобы платить звёздами');return}
+  tg.openInvoice(j.link,st=>{
+   if(st==='paid'){close_('mShop');toast('Оплата прошла! Начисляем фишки…');waitChips(PACKS[i].c)}
+   else if(st==='failed')toast('Оплата не прошла');
+  });
+ }catch(e){toast('Нет связи с сервером')}
+ finally{buying=false}
+}
+async function waitChips(expect){
+ for(let k=0;k<8;k++){
+  await new Promise(r=>setTimeout(r,1500));
+  while(syncing)await new Promise(r=>setTimeout(r,300));
+  if(curTotal()!==S.srv){await doSync();continue}
+  const j=await api('balance').catch(()=>({}));
+  if(typeof j.balance==='number'&&j.balance>S.srv){const d=j.balance-S.srv;S.srv=j.balance;S.balance+=d;localSave();updBal();SND.win();toast('+'+fmt(d)+' фишек на балансе 🎉');return}
+ }
+ toast('Фишки придут в течение минуты — перезайди в игру, если не видно');
+}
 
 /* ===== Telegram ===== */
 function tgInit(){try{const tg=window.Telegram&&Telegram.WebApp;if(!tg||!tg.initData)return;tg.ready();tg.expand();

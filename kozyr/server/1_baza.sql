@@ -102,3 +102,14 @@ alter table players add column if not exists photo text;
 
 -- ===== Ник выбран самим игроком =====
 alter table players add column if not exists nick_set boolean not null default false;
+
+-- ===== Покупки за Telegram Stars =====
+create table if not exists payments (
+  charge_id  text primary key,          -- номер платежа от Telegram (защита от двойного начисления)
+  pid        int not null,
+  pack       text not null,
+  stars      int not null,
+  chips      bigint not null,
+  created_at timestamptz not null default now()
+);
+alter table payments enable row level security;

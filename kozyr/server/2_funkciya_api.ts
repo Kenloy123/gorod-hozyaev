@@ -323,10 +323,74 @@ async function roomAction(a: string, body: any, me: any) {
   return out({ error: "busy" });
 }
 
+
+// ---------- оплата Telegram Stars ----------
+const GAME_URL = "https://kenloy123.github.io/gorod-hozyaev/kozyr/";
+const PACKS: Record<string, { stars: number; chips: number }> = {
+  p1: { stars: 15, chips: 5000 },
+  p2: { stars: 50, chips: 25000 },
+  p3: { stars: 150, chips: 100000 },
+  p4: { stars: 500, chips: 500000 },
+};
+async function tg(method: string, params: any) {
+  const r = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(params),
+  });
+  return await r.json();
+}
+async function hookSecret() {
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode("kozyr-hook:" + TOKEN)));
+  return hex(h).slice(0, 48);
+}
+const fmtN = (n: number) => n.toLocaleString("ru-RU");
+async function onUpdate(u: any) {
+  // 1) Telegram спрашивает «можно принять оплату?» — проверяем и отвечаем за 10 секунд
+  if (u.pre_checkout_query) {
+    const q = u.pre_checkout_query;
+    const [pidS, pack] = String(q.invoice_payload || "").split(":");
+    const P = PACKS[pack];
+    const { data: pl } = await db.from("players").select("pid").eq("pid", Number(pidS)).maybeSingle();
+    const ok = !!P && !!pl && q.currency === "XTR" && q.total_amount === P.stars;
+    await tg("answerPreCheckoutQuery", ok ? { pre_checkout_query_id: q.id, ok: true }
+      : { pre_checkout_query_id: q.id, ok: false, error_message: "Покупка не найдена, попробуй ещё раз из игры" });
+    return;
+  }
+  const m = u.message;
+  if (!m) return;
+  // 2) Оплата прошла — начисляем фишки (один раз на платёж)
+  if (m.successful_payment) {
+    const sp = m.successful_payment;
+    const [pidS, pack] = String(sp.invoice_payload || "").split(":");
+    const P = PACKS[pack];
+    if (!P) return;
+    const pid = Number(pidS);
+    const { error } = await db.from("payments").insert({ charge_id: sp.telegram_payment_charge_id, pid, pack, stars: sp.total_amount, chips: P.chips });
+    if (error) return; // этот платёж уже начислен
+    await db.rpc("apply_delta", { p_pid: pid, p_delta: P.chips, p_cap: 1e12 });
+    await tg("sendMessage", { chat_id: m.chat.id, text: `✅ Оплата прошла! Начислено ${fmtN(P.chips)} фишек.\nУдачной игры 🍀` });
+    return;
+  }
+  // 3) /start — приветствие с кнопкой «Играть»
+  if (typeof m.text === "string" && m.text.startsWith("/start")) {
+    await tg("sendMessage", {
+      chat_id: m.chat.id,
+      text: "🃏 Козырь — карты онлайн!\n\nДурак, Покер, Козёл и Рулетка. Играй с ботами или зови друзей в комнату по ID.\n\nЖми «Играть» 👇",
+      reply_markup: { inline_keyboard: [[{ text: "🃏 Играть", web_app: { url: GAME_URL } }]] },
+    });
+  }
+}
+
 // ---------- обработка запросов ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return out("ok");
   if (req.method !== "POST") return out({ error: "method" }, 405);
+  // запросы от самого Telegram (оплата, /start)
+  const hs = req.headers.get("x-telegram-bot-api-secret-token");
+  if (hs) {
+    if (!TOKEN || hs !== (await hookSecret())) return new Response("forbidden", { status: 403 });
+    try { await onUpdate(await req.json()); } catch (e) { console.error(e); }
+    return new Response("ok");
+  }
   let body: any;
   try { body = await req.json(); } catch { return out({ error: "bad_json" }, 400); }
 
@@ -418,6 +482,23 @@ Deno.serve(async (req) => {
       const { count } = await db.from("players").select("pid", { count: "exact", head: true }).gt("seen_at", new Date(Date.now() - ONLINE_MS).toISOString());
       return out({ online: count || 1 });
     }
+
+    if (a === "invoice") {
+      const pack = String(body.pack || "");
+      const P = PACKS[pack];
+      if (!P) return out({ error: "bad_pack" });
+      const r = await tg("createInvoiceLink", {
+        title: `${fmtN(P.chips)} фишек`,
+        description: `Пополнение баланса в «Козыре» на ${fmtN(P.chips)} игровых фишек`,
+        payload: `${pid}:${pack}:${Date.now()}`,
+        currency: "XTR",
+        prices: [{ label: `${fmtN(P.chips)} фишек`, amount: P.stars }],
+      });
+      if (!r.ok) { console.error(r); return out({ error: "invoice" }); }
+      return out({ link: r.result });
+    }
+
+    if (a === "balance") return out({ balance: me.balance });
 
     if (a === "friends") return out({ friends: await friendsOf(pid) });
 
