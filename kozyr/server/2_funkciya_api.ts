@@ -43,12 +43,14 @@ async function tgUser(initData: string) {
 }
 
 // ---------- помощники ----------
-const PUB = "pid,nick,avatar,avatar_f,wins,games,balance,by_game";
+const PUB = "pid,nick,avatar,avatar_f,wins,games,balance,by_game,seen_at";
+const ONLINE_MS = 150_000;
+const isOn = (t: string) => !!t && Date.now() - Date.parse(t) < ONLINE_MS;
 const fav = (by: Record<string, number>) => {
   const e = Object.entries(by || {}).sort((a, b) => b[1] - a[1])[0];
   return e ? e[0] : null;
 };
-const pub = (r: any) => r && ({ pid: r.pid, nick: r.nick, avatar: r.avatar, avatar_f: r.avatar_f, wins: r.wins, games: r.games, balance: r.balance, fav: fav(r.by_game) });
+const pub = (r: any) => r && ({ pid: r.pid, nick: r.nick, avatar: r.avatar, avatar_f: r.avatar_f, wins: r.wins, games: r.games, balance: r.balance, fav: fav(r.by_game), online: isOn(r.seen_at), seen: r.seen_at });
 const cleanNick = (s: string) => (s || "").replace(/[^A-Za-zА-Яа-яЁё0-9_ ]/g, "").replace(/\s+/g, " ").trim().slice(0, 16);
 
 async function nickFree(nick: string, exceptPid?: number) {
@@ -79,7 +81,7 @@ async function friendsOf(pid: number) {
   const ids = (rows || []).map((r) => r.fid);
   if (!ids.length) return [];
   const { data } = await db.from("players").select(PUB).in("pid", ids);
-  return (data || []).map(pub);
+  return (data || []).map(pub).sort((a, b) => Number(b.online) - Number(a.online));
 }
 
 // ===== ДУРАК: движок на сервере (общий для всех игроков комнаты) =====
@@ -207,8 +209,8 @@ async function saveRoom(room: any, patch: any) {
 }
 async function roomPlayers(pids: number[]) {
   if (!pids.length) return [];
-  const { data } = await db.from("players").select("pid,nick,avatar,avatar_f,wins,balance").in("pid", pids);
-  return pids.map((id) => (data || []).find((r) => r.pid === id)).filter(Boolean);
+  const { data } = await db.from("players").select("pid,nick,avatar,avatar_f,wins,balance,seen_at").in("pid", pids);
+  return pids.map((id) => (data || []).find((r) => r.pid === id)).filter(Boolean).map((r) => ({ ...r, online: isOn(r.seen_at) }));
 }
 // подсчитать итог (без денег) — деньги переводятся только после успешного сохранения
 function settle(room: any, st: any) {
@@ -405,6 +407,12 @@ Deno.serve(async (req) => {
       return out({ friends: await friendsOf(pid) });
     }
 
+    if (a === "ping") {
+      await db.from("players").update({ seen_at: new Date().toISOString() }).eq("pid", pid);
+      const { count } = await db.from("players").select("pid", { count: "exact", head: true }).gt("seen_at", new Date(Date.now() - ONLINE_MS).toISOString());
+      return out({ online: count || 1 });
+    }
+
     if (a === "friends") return out({ friends: await friendsOf(pid) });
 
     if (a.startsWith("room_") || a === "invites") return await roomAction(a, body, me);
@@ -413,7 +421,8 @@ Deno.serve(async (req) => {
       const col = body.by === "c" ? "balance" : "wins";
       const { data } = await db.from("players").select(PUB).order(col, { ascending: false }).limit(50);
       const { count } = await db.from("players").select("pid", { count: "exact", head: true }).gt(col, me[col]);
-      return out({ list: (data || []).map(pub), myRank: (count || 0) + 1 });
+      const { count: onl } = await db.from("players").select("pid", { count: "exact", head: true }).gt("seen_at", new Date(Date.now() - ONLINE_MS).toISOString());
+      return out({ list: (data || []).map(pub), myRank: (count || 0) + 1, online: onl || 1 });
     }
 
     if (a === "profile") {

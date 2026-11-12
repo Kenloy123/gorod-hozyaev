@@ -269,6 +269,12 @@ button{font:inherit;cursor:pointer;border:0}
 .slot{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px dashed var(--line);margin-bottom:6px;color:var(--mut);min-height:58px}
 .inv{display:flex;align-items:center;gap:10px;background:#1d2a45;border:1px solid #2e4a80;border-radius:14px;padding:10px 12px;margin-bottom:10px}
 .inv div{flex:1;font-size:13px}.inv b{font-size:14px}
+.av,.pbig{position:relative}
+.odot{position:absolute;right:0;bottom:0;width:12px;height:12px;border-radius:50%;background:#7a8a83;border:2px solid var(--panel)}
+.odot.on{background:#3ddc84;box-shadow:0 0 6px #3ddc84}
+.pbig .odot{width:20px;height:20px;right:6px;bottom:6px;border-width:3px}
+.onl{font-size:12px;color:#3ddc84;font-weight:700}.offl{font-size:12px;color:var(--mut)}
+.onlbar{text-align:center;font-size:13px;color:var(--mut);margin:-6px 0 14px}.onlbar b{color:#3ddc84}
 </style>
 </head>
 <body>
@@ -283,6 +289,7 @@ button{font:inherit;cursor:pointer;border:0}
     <div class="prof"><div class="me-ava" id="myAva" onclick="openAva()"></div><div style="flex:1;min-width:0"><b id="helloName" onclick="openNick()" style="cursor:pointer">Игрок</b> <span onclick="openNick()" style="cursor:pointer;font-size:13px">✏️</span><div class="idline">ID: <b id="myId"></b> <button class="cpy" onclick="copyId()">копировать</button></div></div><button class="btn ghost" onclick="openAva()">Аватар</button></div>
     <div id="invBox"></div>
     <div class="lbtns"><button onclick="openLead()">🏆 Топ игроков</button><button onclick="openFriends()">👥 Друзья <span id="fCnt"></span></button></div>
+    <div class="onlbar" id="onlBar"></div>
     <div class="hello">Игра на игровые фишки. Фишки нельзя вывести — только играть.</div>
     <div class="bonus">
       <div style="font-size:28px">🎁</div>
@@ -1350,7 +1357,7 @@ async function goOnline(initData){
   localSave();renderLobby();updBal();
   $('leadNote').textContent='Все игроки «Козыря». Нажми на игрока, чтобы открыть профиль.';
   $('frNote').textContent='Ищи любого игрока по ID (6 цифр) или по нику.';
-  checkInvites();
+  checkInvites();ping();
  }catch(e){}
 }
 function queueSync(){if(!ONL)return;clearTimeout(syncT);syncT=setTimeout(doSync,700)}
@@ -1380,14 +1387,14 @@ async function onLead(t){
  const j=await api('top',{by:t}).catch(()=>({}));
  if(!j.list){$('lbList').innerHTML='<p style="text-align:center">Нет связи с сервером</p>';return}
  const me=+S.id;const fr=new Set((S.friendsOn||[]).map(f=>f.pid));
- let h=j.list.map((x,i)=>`<div class="lrow${x.pid===me?' me':''}" onclick="${x.pid===me?'':`openP(${x.pid})`}"><div class="pl${i<3?' top':''}">${['🥇','🥈','🥉'][i]||i+1}</div><div class="av">${pSvg(x)}</div><div class="nmx">${x.nick}${x.pid===me?' (ты)':''}${fr.has(x.pid)?' 👥':''}<small>ID ${x.pid} · любит: ${favName(x.fav)}</small></div><div class="val">${t==='w'?fmt(x.wins)+' 🏆':fmt(x.balance)}</div></div>`).join('');
+ let h=j.list.map((x,i)=>`<div class="lrow${x.pid===me?' me':''}" onclick="${x.pid===me?'':`openP(${x.pid})`}"><div class="pl${i<3?' top':''}">${['🥇','🥈','🥉'][i]||i+1}</div><div class="av">${pSvg(x)}${odot(x.pid===me?{online:1}:x)}</div><div class="nmx">${x.nick}${x.pid===me?' (ты)':''}${fr.has(x.pid)?' 👥':''}<small>${x.pid===me?'<span class="onl">● в сети</span>':ostat(x)} · ID ${x.pid}</small></div><div class="val">${t==='w'?fmt(x.wins||0)+' 🏆':fmt(x.balance||0)}</div></div>`).join('');
  if(!j.list.some(x=>x.pid===me))h+=`<div class="lrow me"><div class="pl">${j.myRank}</div><div class="av">${myAva()}</div><div class="nmx">${myNick()} (ты)<small>ID ${S.id}</small></div><div class="val">${t==='w'?fmt(S.st.w)+' 🏆':fmt(curTotal())}</div></div>`;
- $('lbList').innerHTML=h}
+ $('lbList').innerHTML=h;if(j.online){setOnl(j.online);$('leadNote').innerHTML=`Сейчас в игре: <b style="color:#3ddc84">${fmt(j.online)}</b> · нажми на игрока, чтобы открыть профиль`}}
 async function openP(pid){
  const j=await api('profile',{pid}).catch(()=>({}));
  if(!j.player){toast('Игрок не найден');return}
  const x=j.player;close_('mFriends');
- $('profBody').innerHTML=`<div class="pbig">${pSvg(x)}</div><h3>${x.nick}</h3><p>ID ${x.pid} · ${j.friend?'👥 у тебя в друзьях':'игрок'} · место в топе: ${j.rank}</p>
+ $('profBody').innerHTML=`<div class="pbig">${pSvg(x)}${odot(x)}</div><h3>${x.nick}</h3><p>${ostat(x)}<br>ID ${x.pid} · ${j.friend?'👥 у тебя в друзьях':'игрок'} · место в топе: ${j.rank}</p>
   <div class="pstats"><div><b>${fmt(x.wins)}</b>побед</div><div><b>${fmt(x.balance)}</b>фишек</div><div><b>${favName(x.fav)}</b>любит</div></div>
   <div class="row" style="margin-bottom:8px"><button class="btn ${j.friend?'ghost':''}" onclick="frSet(${x.pid},${!j.friend})">${j.friend?'Удалить из друзей':'➕ Добавить в друзья'}</button></div>
   <p class="note2">Игра с друзьями за одним столом — скоро</p>`;
@@ -1402,7 +1409,7 @@ function botCard(name){
  $('profBody').innerHTML=`<div class="pbig">${botSvg(name)}</div><h3>${name}</h3><p>🤖 Бот-соперник</p>
   <div class="row"><button class="btn ghost" onclick="close_('mProf');inviteDurak('${name}')">🃏 Сыграть в Дурака 1 на 1</button></div>`;
  open_('mProf')}
-function frRow(x,btn){return`<div class="lrow"><div class="av" onclick="openP(${x.pid})">${pSvg(x)}</div><div class="nmx" onclick="openP(${x.pid})">${x.nick}<small>ID ${x.pid} · ${fmt(x.wins)} побед</small></div>${btn}</div>`}
+function frRow(x,btn){return`<div class="lrow"><div class="av" onclick="openP(${x.pid})">${pSvg(x)}${odot(x)}</div><div class="nmx" onclick="openP(${x.pid})">${x.nick}<small>${ostat(x)} · ID ${x.pid}</small></div>${btn}</div>`}
 function onFriends(){
  const L=S.friendsOn||[];
  $('fList').innerHTML=L.length?L.map(x=>frRow(x,`<button class="btn ghost" onclick="frSet(${x.pid},false,1)">✕</button>`)).join(''):'<p style="text-align:center;padding:14px 0">Пока никого. Найди игрока по ID или нику 🙂</p>';
@@ -1466,11 +1473,11 @@ function rRoomScreen(){
  $('rmSub').textContent='Дурак · ставка '+fmt(r.stake);
  let h=`<div class="rcode"><div style="font-size:12px;color:var(--mut)">КОД КОМНАТЫ</div><div class="big">${r.code}</div><button class="cpy" onclick="rCopy()">скопировать код</button><div style="font-size:12px;color:var(--mut);margin-top:6px">Дурак подкидной · до ${r.maxp} игроков · проигравший платит ${fmt(r.stake)} каждому</div></div>`;
  h+='<div class="h2">Игроки</div>';
- r.players.forEach(p=>{h+=`<div class="lrow${p.pid===me?' me':''}"><div class="av">${pSvg(p)}</div><div class="nmx">${p.nick}${p.pid===me?' (ты)':''}<small>ID ${p.pid} · ${fmt(p.wins||0)} побед</small></div>${p.pid===r.host?'<div>👑</div>':''}</div>`});
+ r.players.forEach(p=>{h+=`<div class="lrow${p.pid===me?' me':''}"><div class="av">${pSvg(p)}${odot(p.pid===me?{online:1}:p)}</div><div class="nmx">${p.nick}${p.pid===me?' (ты)':''}<small>ID ${p.pid} · ${fmt(p.wins||0)} побед</small></div>${p.pid===r.host?'<div>👑</div>':''}</div>`});
  for(let k=r.players.length;k<r.maxp;k++)h+='<div class="slot">⏳ свободное место</div>';
  h+=`<div class="h2" style="margin-top:14px">Пригласить по ID</div><div class="srch"><input id="invId" inputmode="numeric" maxlength="6" placeholder="ID игрока (6 цифр)"><button class="btn" onclick="rInvite($('invId').value)">Позвать</button></div>`;
  const fr=(S.friendsOn||[]).filter(f=>!r.players.some(p=>p.pid===f.pid));
- if(fr.length)h+='<div class="h2" style="margin-top:12px">Друзья</div>'+fr.map(f=>`<div class="lrow"><div class="av">${pSvg(f)}</div><div class="nmx">${f.nick}<small>ID ${f.pid}</small></div><button class="btn ${r.invited.includes(f.pid)?'ghost':''}" onclick="rInvite(${f.pid})">${r.invited.includes(f.pid)?'Позван ✓':'Позвать'}</button></div>`).join('');
+ if(fr.length)h+='<div class="h2" style="margin-top:12px">Друзья</div>'+fr.map(f=>`<div class="lrow"><div class="av">${pSvg(f)}${odot(f)}</div><div class="nmx">${f.nick}<small>${ostat(f)}</small></div><button class="btn ${r.invited.includes(f.pid)?'ghost':''}" onclick="rInvite(${f.pid})">${r.invited.includes(f.pid)?'Позван ✓':'Позвать'}</button></div>`).join('');
  h+='<p class="note2" style="padding-top:10px">Приглашённый увидит приглашение в лобби. Или просто скажи ему код комнаты.</p>';
  $('rmBody').innerHTML=h;
  $('rmCtrl').innerHTML=host?`<div class="row"><button class="br" onclick="rStart()" ${r.players.length<2?'disabled':''}>${r.players.length<2?'Ждём игроков…':'▶ Начать игру ('+r.players.length+')'}</button></div>`
@@ -1518,6 +1525,16 @@ async function checkInvites(){
  const j=await api('invites').catch(()=>({}));const L=j.list||[];
  $('invBox').innerHTML=L.map(x=>`<div class="inv"><span style="font-size:24px">📨</span><div><b>${x.host}</b> зовёт в Дурака<br>ставка ${fmt(x.stake)} · игроков: ${x.count}</div><button class="btn" onclick="rJoin('${x.code}')">Войти</button></div>`).join('')}
 setInterval(checkInvites,12000);
+
+
+/* ===== кто в сети ===== */
+function ago(t){if(!t)return'';const m=Math.floor((Date.now()-Date.parse(t))/60000);if(m<60)return m+' мин назад';const h=Math.floor(m/60);if(h<24)return h+' ч назад';const d=Math.floor(h/24);return d+' дн назад'}
+const odot=x=>`<i class="odot${x.online?' on':''}"></i>`;
+const ostat=x=>x.online?'<span class="onl">● в сети</span>':`<span class="offl">был(а) ${ago(x.seen)}</span>`;
+function setOnl(n){$('onlBar').innerHTML=n?`<b>●</b> Сейчас в игре: <b>${fmt(n)}</b>`:''}
+async function ping(){if(!ONL||document.hidden)return;const j=await api('ping').catch(()=>({}));if(j.online)setOnl(j.online)}
+setInterval(ping,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping()});
 
 /* ===== Telegram ===== */
 function tgInit(){try{const tg=window.Telegram&&Telegram.WebApp;if(!tg||!tg.initData)return;tg.ready();tg.expand();
