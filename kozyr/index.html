@@ -256,6 +256,11 @@ button{font:inherit;cursor:pointer;border:0}
 }
 .card .r i{display:block;font-style:normal;font-size:.72em;line-height:1;margin-top:1px;text-align:center}
 .card.xs .r,.card.bk .r{display:none}
+.idline{font-size:12px;color:var(--mut);margin-top:2px}.idline b{color:var(--gold);letter-spacing:1px}
+.cpy{background:#24312c;color:var(--txt);border-radius:6px;font-size:11px;padding:2px 7px;margin-left:4px}
+.srch{display:flex;gap:8px}.srch input{flex:1;min-width:0;background:#0f1714;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:11px 12px;font-size:15px;outline:none}
+.srch input:focus{border-color:var(--gold)}
+.lrow .idsm{color:var(--mut);font-size:11px;font-weight:400}
 </style>
 </head>
 <body>
@@ -267,7 +272,7 @@ button{font:inherit;cursor:pointer;border:0}
     <div class="bal"><i class="chipico"></i><span id="lBal" class="balv">0</span><button class="plus" onclick="openShop()">+</button></div>
   </div>
   <div class="lobby">
-    <div class="prof"><div class="me-ava" id="myAva" onclick="openAva()"></div><div style="flex:1"><b id="helloName">Твой аватар</b><div style="font-size:12px;color:var(--mut)">Нажми, чтобы сменить</div></div><button class="btn ghost" onclick="openAva()">Сменить</button></div>
+    <div class="prof"><div class="me-ava" id="myAva" onclick="openAva()"></div><div style="flex:1;min-width:0"><b id="helloName" onclick="openNick()" style="cursor:pointer">Игрок</b> <span onclick="openNick()" style="cursor:pointer;font-size:13px">✏️</span><div class="idline">ID: <b id="myId"></b> <button class="cpy" onclick="copyId()">копировать</button></div></div><button class="btn ghost" onclick="openAva()">Аватар</button></div>
     <div class="lbtns"><button onclick="openLead()">🏆 Топ игроков</button><button onclick="openFriends()">👥 Друзья <span id="fCnt"></span></button></div>
     <div class="hello">Игра на игровые фишки. Фишки нельзя вывести — только играть.</div>
     <div class="bonus">
@@ -391,10 +396,17 @@ button{font:inherit;cursor:pointer;border:0}
 <!-- ПРОФИЛЬ -->
 <div class="modal" id="mProf" onclick="if(event.target===this)close_('mProf')"><div class="sheet" style="text-align:center" id="profBody"></div></div>
 <!-- ДРУЗЬЯ -->
-<div class="modal" id="mFriends" onclick="if(event.target===this)close_('mFriends')"><div class="sheet"><h3>Друзья</h3><p>Нажми на любого игрока за столом или в топе, чтобы добавить его в друзья.</p><div id="fList"></div>
+<div class="modal" id="mFriends" onclick="if(event.target===this)close_('mFriends')"><div class="sheet"><h3>Друзья</h3>
+ <div class="srch"><input id="fq" placeholder="ID или ник игрока" maxlength="20" oninput="findPlayers()" autocomplete="off"><button class="btn" onclick="findPlayers()">Найти</button></div>
+ <div id="fFound"></div>
+ <div class="h2" style="margin-top:12px">Мои друзья</div><div id="fList"></div>
+ <p class="note2" style="padding:6px 0 0">Сейчас поиск находит игроков-ботов. Когда подключим сервер — найдёт любого живого игрока по ID или нику.</p>
  <button class="btn ghost" style="width:100%;margin-top:8px" onclick="close_('mFriends');openLead()">Найти игроков в топе</button></div></div>
 <!-- ФРАЗЫ -->
 <div class="modal" id="mEmo" onclick="if(event.target===this)close_('mEmo')"><div class="sheet"><h3>Сказать за столом</h3><p>Соперники могут ответить 🙂</p><div class="emos" id="emoList"></div></div></div>
+<!-- НИК -->
+<div class="modal" id="mNick" onclick="if(event.target===this)close_('mNick')"><div class="sheet"><h3>Твой ник</h3><p>3–16 символов: буквы, цифры, _ и пробел. Его видят другие игроки.</p>
+ <div class="srch"><input id="nickIn" maxlength="16" autocomplete="off"><button class="btn" onclick="saveNick()">Сохранить</button></div><p id="nickErr" style="color:#ff8a8a;min-height:16px;margin:6px 0 0"></p></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -431,7 +443,7 @@ function renderLobby(){
  const left=S.lastBonus+864e5-Date.now();
  $('bonusBtn').disabled=left>0;
  $('bonusTxt').textContent=left>0?'Через '+Math.ceil(left/36e5)+' ч':'+2 000 фишек';
- if(S.tgName)$('helloName').textContent='Привет, '+S.tgName+'!';
+ $('helloName').textContent=myNick();$('myId').textContent=S.id;
  updBal();$('myAva').innerHTML=myAva();sndIcons();updFriendsCnt();
 }
 function takeBonus(){if(S.lastBonus+864e5>Date.now())return;S.lastBonus=Date.now();S.balance+=2000;save();renderLobby();toast('+2 000 фишек!')}
@@ -597,26 +609,46 @@ const GNAME={p:'Покер',d:'Дурак',k:'Козёл',r:'Рулетка',pok
 if(!S.friends)S.friends=[];
 function leadData(){const arr=BOTN.map(n=>{const b=bot(n);return{name:n,w:b.w,c:b.c,svg:botSvg(n),fav:GNAME[b.g]}});
  const fav=Object.entries(S.st.by).sort((a,b)=>b[1]-a[1])[0];
- arr.push({name:'Ты',me:true,w:S.st.w,c:S.balance,svg:myAva(),fav:fav?GNAME[fav[0]]:'—'});return arr}
+ arr.push({name:myNick()+' (ты)',me:true,w:S.st.w,c:S.balance,svg:myAva(),fav:fav?GNAME[fav[0]]:'—'});return arr}
 let LT='w';
 function openLead(){close_('mFriends');showScreen('sLead');leadTab(LT)}
 function leadTab(t){LT=t;$('tbW').classList.toggle('on',t==='w');$('tbC').classList.toggle('on',t==='c');
  const arr=leadData().sort((a,b)=>b[t]-a[t]);
- $('lbList').innerHTML=arr.map((x,i)=>`<div class="lrow${x.me?' me':''}" onclick="${x.me?'':`openProf('${x.name}')`}"><div class="pl${i<3?' top':''}">${['🥇','🥈','🥉'][i]||i+1}</div><div class="av">${x.svg}</div><div class="nmx">${x.name}${S.friends.includes(x.name)?' 👥':''}<small>любит: ${x.fav}</small></div><div class="val">${t==='w'?fmt(x.w)+' 🏆':fmt(x.c)}</div></div>`).join('')}
+ $('lbList').innerHTML=arr.map((x,i)=>`<div class="lrow${x.me?' me':''}" onclick="${x.me?'':`openProf('${x.name}')`}"><div class="pl${i<3?' top':''}">${['🥇','🥈','🥉'][i]||i+1}</div><div class="av">${x.svg}</div><div class="nmx">${x.name}${S.friends.includes(x.name)?' 👥':''}<small>ID ${x.me?S.id:botId(x.name)} · любит: ${x.fav}</small></div><div class="val">${t==='w'?fmt(x.w)+' 🏆':fmt(x.c)}</div></div>`).join('')}
 function openProf(name){if(!name||name==='Ты')return;const b=bot(name),fr=S.friends.includes(name);
- const all=leadData();const rw=all.sort((a,c)=>c.w-a.w).findIndex(x=>x.name===name)+1;
- $('profBody').innerHTML=`<div class="pbig">${botSvg(name)}</div><h3>${name}</h3><p>${fr?'👥 У тебя в друзьях':'Игрок'} · место в топе: ${rw}</p>
+ const all=leadData();const rw=all.sort((a,c)=>c.w-a.w).findIndex(x=>x.name===name)+1;close_('mFriends');
+ $('profBody').innerHTML=`<div class="pbig">${botSvg(name)}</div><h3>${name}</h3><p>ID ${botId(name)} · ${fr?'👥 у тебя в друзьях':'игрок'} · место в топе: ${rw}</p>
   <div class="pstats"><div><b>${fmt(b.w)}</b>побед</div><div><b>${fmt(b.c)}</b>фишек</div><div><b>${GNAME[b.g]}</b>любит</div></div>
   <div class="row" style="margin-bottom:8px"><button class="btn ${fr?'ghost':''}" onclick="toggleFriend('${name}')">${fr?'Удалить из друзей':'➕ Добавить в друзья'}</button></div>
   <div class="row"><button class="btn ghost" onclick="close_('mProf');inviteDurak('${name}')">🃏 Позвать в Дурака 1 на 1</button></div>`;
  open_('mProf')}
 function toggleFriend(n){const i=S.friends.indexOf(n);if(i>=0)S.friends.splice(i,1);else{S.friends.push(n);toast(n+' теперь в друзьях 👥')}save();openProf(n);updFriendsCnt();if($('sLead').classList.contains('on'))leadTab(LT)}
 function updFriendsCnt(){$('fCnt').textContent=S.friends.length?'('+S.friends.length+')':''}
+function fToggle(n){const i=S.friends.indexOf(n);if(i>=0)S.friends.splice(i,1);else{S.friends.push(n);toast(n+' теперь в друзьях 👥')}save();updFriendsCnt();openFriends()}
 function openFriends(){
- $('fList').innerHTML=S.friends.length?S.friends.map(n=>`<div class="lrow"><div class="av" onclick="close_('mFriends');openProf('${n}')">${botSvg(n)}</div><div class="nmx">${n}<small>${fmt(bot(n).w)} побед</small></div><button class="btn" onclick="close_('mFriends');inviteDurak('${n}')">Играть</button></div>`).join('')
-  :'<p style="text-align:center;padding:20px 0">Пока никого. Добавляй тех, с кем играл! 🙂</p>';
- open_('mFriends')}
+ $('fList').innerHTML=S.friends.length?S.friends.map(n=>`<div class="lrow"><div class="av" onclick="close_('mFriends');openProf('${n}')">${botSvg(n)}</div><div class="nmx">${n}<small>ID ${botId(n)} · ${fmt(bot(n).w)} побед</small></div><button class="btn" onclick="close_('mFriends');inviteDurak('${n}')">Играть</button></div>`).join('')
+  :'<p style="text-align:center;padding:14px 0">Пока никого. Найди игрока по ID или нику 🙂</p>';
+ findPlayers();open_('mFriends')}
 function inviteDurak(n){if(D&&!D.over){toast('Сначала доиграй текущую партию');return}close_('mProf');close_('mFriends');durStart(0,n)}
+
+
+/* ===== ID и ник ===== */
+if(!S.id){S.id=String(100000+rnd(900000));save()}
+const botId=n=>String(100000+hash('id:'+n)%900000);
+const myNick=()=>S.nick||S.tgName||('Игрок'+S.id.slice(-4));
+function openNick(){$('nickIn').value=myNick();$('nickErr').textContent='';open_('mNick');setTimeout(()=>$('nickIn').focus(),100)}
+function saveNick(){const v=$('nickIn').value.trim().replace(/\s+/g,' ');
+ if(!/^[A-Za-zА-Яа-яЁё0-9_ ]{3,16}$/.test(v)){$('nickErr').textContent='Ник должен быть 3–16 символов: буквы, цифры, _ и пробел';return}
+ if(BOTN.some(n=>n.toLowerCase()===v.toLowerCase())){$('nickErr').textContent='Этот ник уже занят';return}
+ S.nick=v;save();close_('mNick');renderLobby();toast('Ник сохранён')}
+function copyId(){try{navigator.clipboard.writeText(S.id).then(()=>toast('ID скопирован: '+S.id),()=>toast('Твой ID: '+S.id))}catch(e){toast('Твой ID: '+S.id)}}
+function findPlayers(){const q=$('fq').value.trim().toLowerCase();
+ if(!q){$('fFound').innerHTML='';return}
+ if(q===S.id||q===myNick().toLowerCase()){$('fFound').innerHTML='<p style="text-align:center;margin:10px 0">Это ты 🙂</p>';return}
+ const res=BOTN.filter(n=>botId(n)===q||n.toLowerCase().includes(q)).slice(0,8);
+ $('fFound').innerHTML=res.length?'<div class="h2" style="margin-top:12px">Найдено</div>'+res.map(n=>{const fr=S.friends.includes(n);
+   return`<div class="lrow"><div class="av" onclick="openProf('${n}')">${botSvg(n)}</div><div class="nmx" onclick="openProf('${n}')">${n}<small>ID ${botId(n)} · ${fmt(bot(n).w)} побед</small></div><button class="btn ${fr?'ghost':''}" onclick="fToggle('${n}')">${fr?'✓ Друг':'➕'}</button></div>`}).join('')
+  :'<p style="text-align:center;margin:10px 0">Никого не нашли. Проверь ID или ник.</p>'}
 
 /* ===== Игра ===== */
 const BOTN=['Вован','Санёк','Гоша','Рустам','Лёха','Димон','Карина','Оля','Тимур','Артур','Мага','Светка','Колян','Жека','Ринат','Настя','Батя','Шурик'];
