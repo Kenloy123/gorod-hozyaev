@@ -43,14 +43,16 @@ async function tgUser(initData: string) {
 }
 
 // ---------- помощники ----------
-const PUB = "pid,nick,avatar,avatar_f,wins,games,balance,by_game,seen_at";
+const PUB = "pid,nick,avatar,avatar_f,wins,games,balance,by_game,seen_at,photo";
+const photoOf = (r: any) => (r.avatar === "tg" && r.photo ? r.photo : null);
+const okPhoto = (u: any) => (typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 500 ? u : null);
 const ONLINE_MS = 150_000;
 const isOn = (t: string) => !!t && Date.now() - Date.parse(t) < ONLINE_MS;
 const fav = (by: Record<string, number>) => {
   const e = Object.entries(by || {}).sort((a, b) => b[1] - a[1])[0];
   return e ? e[0] : null;
 };
-const pub = (r: any) => r && ({ pid: r.pid, nick: r.nick, avatar: r.avatar, avatar_f: r.avatar_f, wins: r.wins, games: r.games, balance: r.balance, fav: fav(r.by_game), online: isOn(r.seen_at), seen: r.seen_at });
+const pub = (r: any) => r && ({ pid: r.pid, nick: r.nick, avatar: r.avatar, avatar_f: r.avatar_f, wins: r.wins, games: r.games, balance: r.balance, fav: fav(r.by_game), online: isOn(r.seen_at), seen: r.seen_at, photo: photoOf(r) });
 const cleanNick = (s: string) => (s || "").replace(/[^A-Za-zА-Яа-яЁё0-9_ ]/g, "").replace(/\s+/g, " ").trim().slice(0, 16);
 
 async function nickFree(nick: string, exceptPid?: number) {
@@ -65,7 +67,7 @@ async function createPlayer(user: any) {
     let nick = base.length >= 3 ? base : "Игрок" + String(pid).slice(-4);
     if (!(await nickFree(nick))) nick = (nick.slice(0, 11) + " " + String(pid).slice(-4)).trim();
     const { data, error } = await db.from("players")
-      .insert({ pid, tg_id: user.id, nick, balance: START_BALANCE })
+      .insert({ pid, tg_id: user.id, nick, balance: START_BALANCE, photo: okPhoto(user.photo_url), avatar: okPhoto(user.photo_url) ? "tg" : "p3" })
       .select("*").single();
     if (!error) return data;
     if (String(error.message).includes("tg_id")) {
@@ -209,8 +211,8 @@ async function saveRoom(room: any, patch: any) {
 }
 async function roomPlayers(pids: number[]) {
   if (!pids.length) return [];
-  const { data } = await db.from("players").select("pid,nick,avatar,avatar_f,wins,balance,seen_at").in("pid", pids);
-  return pids.map((id) => (data || []).find((r) => r.pid === id)).filter(Boolean).map((r) => ({ ...r, online: isOn(r.seen_at) }));
+  const { data } = await db.from("players").select("pid,nick,avatar,avatar_f,wins,balance,seen_at,photo").in("pid", pids);
+  return pids.map((id) => (data || []).find((r) => r.pid === id)).filter(Boolean).map((r) => ({ ...r, online: isOn(r.seen_at), photo: photoOf(r) }));
 }
 // подсчитать итог (без денег) — деньги переводятся только после успешного сохранения
 function settle(room: any, st: any) {
@@ -338,7 +340,11 @@ Deno.serve(async (req) => {
     const a = String(body.action || "");
 
     if (a === "login") {
-      await db.from("players").update({ seen_at: new Date().toISOString() }).eq("pid", pid);
+      const ph = okPhoto(user.photo_url);
+      const upd: any = { seen_at: new Date().toISOString(), photo: ph };
+      if (ph && !me.photo && me.avatar !== "tg") upd.avatar = "tg";   // первый раз узнали фото — ставим его
+      Object.assign(me, upd);
+      await db.from("players").update(upd).eq("pid", pid);
       return out({ me: { ...pub(me), last_bonus: me.last_bonus }, friends: await friendsOf(pid) });
     }
 
@@ -373,7 +379,7 @@ Deno.serve(async (req) => {
 
     if (a === "avatar") {
       const seed = String(body.seed || "");
-      if (!/^p\d{1,2}$/.test(seed)) return out({ error: "bad_avatar" });
+      if (!/^p\d{1,2}$/.test(seed) && !(seed === "tg" && me.photo)) return out({ error: "bad_avatar" });
       await db.from("players").update({ avatar: seed, avatar_f: !!body.f }).eq("pid", pid);
       return out({ ok: true });
     }

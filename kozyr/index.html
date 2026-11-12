@@ -275,6 +275,8 @@ button{font:inherit;cursor:pointer;border:0}
 .pbig .odot{width:20px;height:20px;right:6px;bottom:6px;border-width:3px}
 .onl{font-size:12px;color:#3ddc84;font-weight:700}.offl{font-size:12px;color:var(--mut)}
 .onlbar{text-align:center;font-size:13px;color:var(--mut);margin:-6px 0 14px}.onlbar b{color:#3ddc84}
+.tgimg{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.me-ava .tgimg,.face .tgimg,.lrow .av .tgimg,.pbig .tgimg,.avgrid .tgimg{border-radius:50%}
 </style>
 </head>
 <body>
@@ -576,13 +578,15 @@ function avatarSVG(seed,fem){
   else if(f<.45)s+=`<path d="M40 58 Q50 53 60 58 Q50 57 40 58Z" fill="${hair}" stroke="${hair}" stroke-width="2.5"/>`;}
  return s+'</svg>';
 }
-const myAva=()=>avatarSVG(S.ava||'p3',!!S.avaF);
+const imgAva=(u,seed,f)=>`<img class="tgimg" src="${u}" referrerpolicy="no-referrer" alt="" onerror="this.outerHTML=avatarSVG('${seed||'p3'}',${!!f})">`;
+const myAva=()=>S.ava==='tg'&&S.photo?imgAva(S.photo,'p3',false):avatarSVG(S.ava&&S.ava!=='tg'?S.ava:'p3',!!S.avaF);
 const AVS=Array.from({length:16},(_,i)=>({seed:'p'+i,fem:i%4===1||i%4===2}));
 function openAva(){
- $('avgrid').innerHTML=AVS.map((a,i)=>`<button class="${(S.ava||'p3')===a.seed?'sel':''}" onclick="pickAva(${i})">${avatarSVG(a.seed,a.fem)}</button>`).join('');
+ $('avgrid').innerHTML=(S.photo?`<button class="${S.ava==='tg'?'sel':''}" onclick="pickTg()" title="Фото из Telegram">${imgAva(S.photo,'p3',false)}</button>`:'')+AVS.map((a,i)=>`<button class="${(S.ava||'p3')===a.seed?'sel':''}" onclick="pickAva(${i})">${avatarSVG(a.seed,a.fem)}</button>`).join('');
  open_('mAva');
 }
-function pickAva(i){if(ONL)api('avatar',{seed:AVS[i].seed,f:AVS[i].fem});S.ava=AVS[i].seed;S.avaF=AVS[i].fem;save();close_('mAva');renderLobby();toast('Аватар обновлён')}
+function pickTg(){if(ONL)api('avatar',{seed:'tg'});S.ava='tg';save();close_('mAva');renderLobby();toast('Теперь у тебя фото из Telegram')}
+function pickAva(i){S.avaSet=1;if(ONL)api('avatar',{seed:AVS[i].seed,f:AVS[i].fem});S.ava=AVS[i].seed;S.avaF=AVS[i].fem;save();close_('mAva');renderLobby();toast('Аватар обновлён')}
 
 /* ===== Звук (синтез, без файлов) ===== */
 let AC=null;
@@ -1350,7 +1354,7 @@ async function goOnline(initData){
  try{
   const j=await api('login');if(!j.me)return;
   const me=j.me;ONL=true;
-  S.id=String(me.pid);S.nick=me.nick;S.ava=me.avatar;S.avaF=me.avatar_f;
+  S.id=String(me.pid);S.nick=me.nick;S.ava=me.avatar;S.avaF=me.avatar_f;S.photo=me.photo||S.photo||null;
   S.balance=Math.max(0,me.balance-(S.inPlay||0)-(S.rPending||0));S.srv=me.balance;
   S.lastBonus=me.last_bonus?Date.parse(me.last_bonus):0;
   S.st.w=me.wins;S.st.g=me.games;S.friendsOn=j.friends||[];
@@ -1379,7 +1383,7 @@ async function onNick(v){
  const j=await api('nick',{nick:v}).catch(()=>({error:'net'}));
  if(j.nick){S.nick=j.nick;localSave();close_('mNick');renderLobby();toast('Ник сохранён')}
  else $('nickErr').textContent=j.error==='taken'?'Этот ник уже занят':j.error==='bad_nick'?'Ник должен быть 3–16 символов: буквы, цифры, _ и пробел':'Нет связи с сервером'}
-const pSvg=r=>avatarSVG(r.avatar||'p3',!!r.avatar_f);
+const pSvg=r=>r.photo?imgAva(r.photo,'p3',false):avatarSVG(r.avatar&&r.avatar!=='tg'?r.avatar:'p3',!!r.avatar_f);
 const favName=f=>f?GNAME[f]:'—';
 async function onLead(t){
  LT=t;$('tbW').classList.toggle('on',t==='w');$('tbC').classList.toggle('on',t==='c');
@@ -1539,7 +1543,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping()});
 /* ===== Telegram ===== */
 function tgInit(){try{const tg=window.Telegram&&Telegram.WebApp;if(!tg||!tg.initData)return;tg.ready();tg.expand();
  tg.setHeaderColor&&tg.setHeaderColor('#16211d');tg.setBackgroundColor&&tg.setBackgroundColor('#0d1512');
- const u=tg.initDataUnsafe&&tg.initDataUnsafe.user;if(u&&u.first_name){S.tgName=u.first_name;localSave();renderLobby()}
+ const u=tg.initDataUnsafe&&tg.initDataUnsafe.user;if(u&&u.photo_url&&/^https:\/\/[^\s"'<>]+$/.test(u.photo_url)){S.photo=u.photo_url;if(!S.avaSet)S.ava='tg'}if(u&&u.first_name){S.tgName=u.first_name;localSave();renderLobby()}
  goOnline(tg.initData)}catch(e){}}
 window.addEventListener('load',tgInit);
 

@@ -96,3 +96,6 @@ create table if not exists rooms (
 create index if not exists rooms_invited on rooms using gin (invited);
 create index if not exists rooms_players on rooms using gin (players);
 alter table rooms enable row level security;
+
+-- ===== Фото из Telegram =====
+alter table players add column if not exists photo text;
