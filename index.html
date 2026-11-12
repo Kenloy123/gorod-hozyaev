@@ -1937,7 +1937,7 @@ $("hintClose").addEventListener("click",()=>{ S.hint=false; $("hint").hidden=tru
 let rateBy="cap", pTab="main";
 function people(){ const own=ALL.filter(b=>S.biz[b.id].owner==="you"), me={o:"you",lg:cloud.league||1,city:S.city||"koch",name:S.player.nick,look:myLook(),cap:capital(),inc:own.reduce((a,b)=>a+incomeOf(b),0),cnt:own.length,rep:S.rep,level:levelOf(S.xp),shifts:S.stats.shifts||0,ach:ACHIEVE.filter(a=>a[3](S.stats)).length,refs:S.refs||0,cars:S.cars.length};
   if(!cloud.on) return [me];
-  return [me,...cloud.players.filter(x=>String(x.tg_id)!==String(cloud.id)).map(x=>{ const q=x.public||{}; return {o:"r"+x.tg_id,lg:+x.league||1,city:(q.city||"koch"),name:x.nick,look:x.look||LOOK0,cap:+x.capital||+q.capital||0,inc:+q.income||0,cnt:+q.cnt||+q.objects||0,rep:+q.rep||0,level:+q.level||1,shifts:+(q.stats&&q.stats.shifts)||0,ach:+q.ach||0,refs:+q.refs||0,cars:(q.cars||[]).length}; })]; }
+  return [me,...cloud.players.filter(x=>String(x.tg_id)!==String(cloud.id)).map(x=>{ const q=x.public||{}; const cp=+x.capital||+q.capital||0; return {o:"r"+x.tg_id,lg:lgEff(x.league,cp),city:(q.city||"koch"),name:x.nick,look:x.look||LOOK0,cap:+x.capital||+q.capital||0,inc:+q.income||0,cnt:+q.cnt||+q.objects||0,rep:+q.rep||0,level:+q.level||1,shifts:+(q.stats&&q.stats.shifts)||0,ach:+q.ach||0,refs:+q.refs||0,cars:(q.cars||[]).length}; })]; }
 const RM={lgR:["Лиги",v=>v],cityR:["Города",v=>v],cap:["Капитал",rub],inc:["Доход",v=>rub((v)*60)+"/час"],level:["Уровень",v=>`${v} ур.`],cnt:["Объекты",v=>v],shifts:["Смены",v=>v],rep:["Репутация",v=>v],ach:["Достижения",v=>v],cars:["Транспорт",v=>v],refs:["Друзья",v=>v]};
 const cityScore=c=>{ const l=ALL.filter(b=>cityOf(b)===c&&S.biz[b.id]&&S.biz[b.id].owner); return {n:l.length,all:ALL.filter(b=>cityOf(b)===c).length,sum:l.reduce((a,b)=>a+b.price,0)}; };
 let cityBy="koch";
@@ -2539,6 +2539,8 @@ document.addEventListener("click",e=>{ const t=e.target.closest("[data-net-tab]"
 { const st1=showTab; showTab=function(tab){ const v=$("netsView"); if(tab==="nets"){ st1("more"); $("moreView").hidden=true; if(v){ v.hidden=false; drawNets(); } return; } if(v) v.hidden=true; return st1(tab); }; }
 const LG_T=[0,3e7,3e9], LG_NAMES=["Новички","Магнаты","Легенды"], LG_COL=["#9AA3B5","#9D7CF2","#FF4D4D"], LG_N=LG_T.length, lgN=l=>Math.max(1,Math.min(LG_N,+l||1)), LG_OLD=[0,2,6,9]; /* 3 лиги; LG_OLD — какой из прежних 10 лиг соответствует новая (для набора бизнесов) */
 const casMax=()=>{ const m=(typeof S!=="undefined"&&S&&S.money)||0; return Math.max(1000,Math.floor(m/1000)*1000); };
+/* лига игрока для рейтинга: кто ещё не заходил после объединения лиг, показывается в той лиге, куда попадёт по капиталу */
+const lgEff=(l,cap)=>{ l=+l||1; return l>LG_N||(l>1&&cap<LG_T[l-1]*.8)||(l<LG_N&&cap>=LG_T[l])?lgOf(cap):l; };
 const lgName=l=>`${lgN(l)} лига · ${LG_NAMES[lgN(l)-1]}`, lgOf=cap=>{ let l=1; for(let i=1;i<LG_T.length;i++) if(cap>=LG_T[i]) l=i+1; return l; };
 const lgHash=x=>{ let h=2166136261; for(let i=0;i<x.length;i++){ h^=x.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; };
 const BIZ_ALL=BIZ.slice();
@@ -2682,7 +2684,7 @@ $("dailyView").addEventListener("click",e=>{ const b=e.target.closest("[data-dai
   ledgerCtx=oc; sfx.cash(); persist(); drawHud(); drawDaily(); });
 setInterval(()=>{ try{ if(!S||!S.player||(typeof cloud!=="undefined"&&cloud.closed)) return; const D=dailyEnsure(); D.list.forEach(x=>{ if(!x.done&&!x.told&&dOk(x)){ x.told=true; notify("money","Задание дня выполнено",`«${x.t}» — забери награду в «Ещё» → «Ежедневные задания».`); persist(); } }); if(!$("dailyView").hidden) drawDaily(); }catch{} },5000);
 { const st3=showTab; showTab=function(tab){ const v=$("dailyView"); if(tab==="daily"){ st3("more"); $("moreView").hidden=true; if(v){ v.hidden=false; drawDaily(); } return; } if(v) v.hidden=true; return st3(tab); }; }
-const lgOfId=id=>{ if(!cloud.on) return 0; if(String(id)===String(cloud.id)) return cloud.league||0; const p=(cloud.players||[]).find(q=>String(q.tg_id)===String(id)); return p?(+p.league||1):0; };
+const lgOfId=id=>{ if(!cloud.on) return 0; if(String(id)===String(cloud.id)) return cloud.league||0; const p=(cloud.players||[]).find(q=>String(q.tg_id)===String(id)); return p?lgEff(p.league,+p.capital||+(p.public&&p.public.capital)||0):0; };
 const lgBadge=l=>(l=l&&lgN(l))?`<span class="lgBadge" style="--lg:${LG_COL[l-1]}" title="${l} лига · ${LG_NAMES[l-1]}" aria-label="${l} лига">${l}</span>`:"";
 const SCHOOLS=()=>CIVIC.filter(c=>c.id.startsWith("school")&&S.biz[c.id]), schoolInc=id=>(cloud.incs[id]==null?15000:cloud.incs[id])*ECO_K;
 function casinoAct(k){ casinoRun(k); persist(); }
