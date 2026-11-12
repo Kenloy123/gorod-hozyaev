@@ -390,7 +390,7 @@ button{font:inherit;cursor:pointer;border:0}
 <div class="screen" id="sLead">
   <div class="top"><button class="back" onclick="toLobby()">‹</button><div><b>Топ игроков</b></div></div>
   <div class="tabs"><button id="tbW" onclick="leadTab('w')">По победам</button><button id="tbC" onclick="leadTab('c')">По фишкам</button></div>
-  <div class="note2">Пока в топе ты и боты. Когда подключим сервер — здесь будут живые игроки.</div>
+  <div class="note2" id="leadNote">Пока в топе ты и боты. Когда подключим сервер — здесь будут живые игроки.</div>
   <div class="lb" id="lbList"></div>
 </div>
 <!-- ПРОФИЛЬ -->
@@ -400,7 +400,7 @@ button{font:inherit;cursor:pointer;border:0}
  <div class="srch"><input id="fq" placeholder="ID или ник игрока" maxlength="20" oninput="findPlayers()" autocomplete="off"><button class="btn" onclick="findPlayers()">Найти</button></div>
  <div id="fFound"></div>
  <div class="h2" style="margin-top:12px">Мои друзья</div><div id="fList"></div>
- <p class="note2" style="padding:6px 0 0">Сейчас поиск находит игроков-ботов. Когда подключим сервер — найдёт любого живого игрока по ID или нику.</p>
+ <p class="note2" id="frNote" style="padding:6px 0 0">Сейчас поиск находит игроков-ботов. Когда подключим сервер — найдёт любого живого игрока по ID или нику.</p>
  <button class="btn ghost" style="width:100%;margin-top:8px" onclick="close_('mFriends');openLead()">Найти игроков в топе</button></div></div>
 <!-- ФРАЗЫ -->
 <div class="modal" id="mEmo" onclick="if(event.target===this)close_('mEmo')"><div class="sheet"><h3>Сказать за столом</h3><p>Соперники могут ответить 🙂</p><div class="emos" id="emoList"></div></div></div>
@@ -413,7 +413,8 @@ button{font:inherit;cursor:pointer;border:0}
 /* ===== Сохранение ===== */
 const LS='kozyr_v1';
 let S=(()=>{try{const s=JSON.parse(localStorage.getItem(LS));if(s&&typeof s.balance==='number')return s}catch(e){}return{balance:5000,inPlay:0,lastBonus:0}})();
-function save(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+function localSave(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+function save(){localSave();if(typeof queueSync==='function')queueSync()}
 if(S.inPlay>0){S.balance+=S.inPlay;S.inPlay=0;save()}
 
 const $=id=>document.getElementById(id);
@@ -446,13 +447,13 @@ function renderLobby(){
  $('helloName').textContent=myNick();$('myId').textContent=S.id;
  updBal();$('myAva').innerHTML=myAva();sndIcons();updFriendsCnt();
 }
-function takeBonus(){if(S.lastBonus+864e5>Date.now())return;S.lastBonus=Date.now();S.balance+=2000;save();renderLobby();toast('+2 000 фишек!')}
+function takeBonus(){if(ONL)return onBonus();if(S.lastBonus+864e5>Date.now())return;S.lastBonus=Date.now();S.balance+=2000;save();renderLobby();toast('+2 000 фишек!')}
 const PACKS=[{c:5000,st:15},{c:25000,st:50,hot:1},{c:100000,st:150},{c:500000,st:500}];
 function openShop(){
  $('packs').innerHTML=PACKS.map((p,i)=>`<button class="pack${p.hot?' hot':''}" onclick="buy(${i})"><b>${fmt(p.c)}</b><small>фишек${p.hot?' · хит':''}</small><div class="pr">${p.st} ⭐</div></button>`).join('');
  open_('mShop');
 }
-function buy(i){S.balance+=PACKS[i].c;save();updBal();renderLobby();close_('mShop');toast('Начислено '+fmt(PACKS[i].c)+' фишек (тест)')}
+function buy(i){if(ONL){close_('mShop');toast('Покупка за Telegram Stars появится совсем скоро ⭐');return}S.balance+=PACKS[i].c;save();updBal();renderLobby();close_('mShop');toast('Начислено '+fmt(PACKS[i].c)+' фишек (тест)')}
 function openRules(){open_('mRules')}
 
 /* ===== Карты и оценка рук ===== */
@@ -557,7 +558,7 @@ function openAva(){
  $('avgrid').innerHTML=AVS.map((a,i)=>`<button class="${(S.ava||'p3')===a.seed?'sel':''}" onclick="pickAva(${i})">${avatarSVG(a.seed,a.fem)}</button>`).join('');
  open_('mAva');
 }
-function pickAva(i){S.ava=AVS[i].seed;S.avaF=AVS[i].fem;save();close_('mAva');renderLobby();toast('Аватар обновлён')}
+function pickAva(i){if(ONL)api('avatar',{seed:AVS[i].seed,f:AVS[i].fem});S.ava=AVS[i].seed;S.avaF=AVS[i].fem;save();close_('mAva');renderLobby();toast('Аватар обновлён')}
 
 /* ===== Звук (синтез, без файлов) ===== */
 let AC=null;
@@ -599,7 +600,7 @@ function sayMe(i){close_('mEmo');const g=curGame();const t=EMOS[i];
  const bi=1+rnd(n);setTimeout(()=>bubble(SAYID[g]+bi,pick(REPLIES[t])),1200+rnd(800));}
 /* статистика игрока */
 if(!S.st)S.st={w:0,g:0,by:{}};
-function addStat(game,won){S.st.g++;if(won){S.st.w++;S.st.by[game]=(S.st.by[game]||0)+1}save()}
+function addStat(game,won){if(ONL)api('stat',{game,won}).catch(()=>{});S.st.g++;if(won){S.st.w++;S.st.by[game]=(S.st.by[game]||0)+1}save()}
 /* пул ботов-игроков (постоянные лица и статистика) */
 if(!S.bots)S.bots={};
 function bot(name){if(!S.bots[name]){const h=hash(name);S.bots[name]={w:80+h%2400,c:5000+(hash(name+'c')%380)*1000,g:'pdkr'[h%4]}}return S.bots[name]}
@@ -612,10 +613,10 @@ function leadData(){const arr=BOTN.map(n=>{const b=bot(n);return{name:n,w:b.w,c:
  arr.push({name:myNick()+' (ты)',me:true,w:S.st.w,c:S.balance,svg:myAva(),fav:fav?GNAME[fav[0]]:'—'});return arr}
 let LT='w';
 function openLead(){close_('mFriends');showScreen('sLead');leadTab(LT)}
-function leadTab(t){LT=t;$('tbW').classList.toggle('on',t==='w');$('tbC').classList.toggle('on',t==='c');
+function leadTab(t){if(ONL)return onLead(t);LT=t;$('tbW').classList.toggle('on',t==='w');$('tbC').classList.toggle('on',t==='c');
  const arr=leadData().sort((a,b)=>b[t]-a[t]);
  $('lbList').innerHTML=arr.map((x,i)=>`<div class="lrow${x.me?' me':''}" onclick="${x.me?'':`openProf('${x.name}')`}"><div class="pl${i<3?' top':''}">${['🥇','🥈','🥉'][i]||i+1}</div><div class="av">${x.svg}</div><div class="nmx">${x.name}${S.friends.includes(x.name)?' 👥':''}<small>ID ${x.me?S.id:botId(x.name)} · любит: ${x.fav}</small></div><div class="val">${t==='w'?fmt(x.w)+' 🏆':fmt(x.c)}</div></div>`).join('')}
-function openProf(name){if(!name||name==='Ты')return;const b=bot(name),fr=S.friends.includes(name);
+function openProf(name){if(!name||name==='Ты')return;if(ONL)return botCard(name);const b=bot(name),fr=S.friends.includes(name);
  const all=leadData();const rw=all.sort((a,c)=>c.w-a.w).findIndex(x=>x.name===name)+1;close_('mFriends');
  $('profBody').innerHTML=`<div class="pbig">${botSvg(name)}</div><h3>${name}</h3><p>ID ${botId(name)} · ${fr?'👥 у тебя в друзьях':'игрок'} · место в топе: ${rw}</p>
   <div class="pstats"><div><b>${fmt(b.w)}</b>побед</div><div><b>${fmt(b.c)}</b>фишек</div><div><b>${GNAME[b.g]}</b>любит</div></div>
@@ -623,9 +624,10 @@ function openProf(name){if(!name||name==='Ты')return;const b=bot(name),fr=S.fr
   <div class="row"><button class="btn ghost" onclick="close_('mProf');inviteDurak('${name}')">🃏 Позвать в Дурака 1 на 1</button></div>`;
  open_('mProf')}
 function toggleFriend(n){const i=S.friends.indexOf(n);if(i>=0)S.friends.splice(i,1);else{S.friends.push(n);toast(n+' теперь в друзьях 👥')}save();openProf(n);updFriendsCnt();if($('sLead').classList.contains('on'))leadTab(LT)}
-function updFriendsCnt(){$('fCnt').textContent=S.friends.length?'('+S.friends.length+')':''}
+function updFriendsCnt(){const n=ONL?(S.friendsOn||[]).length:S.friends.length;$('fCnt').textContent=n?'('+n+')':''}
 function fToggle(n){const i=S.friends.indexOf(n);if(i>=0)S.friends.splice(i,1);else{S.friends.push(n);toast(n+' теперь в друзьях 👥')}save();updFriendsCnt();openFriends()}
 function openFriends(){
+ if(ONL)return onFriends();
  $('fList').innerHTML=S.friends.length?S.friends.map(n=>`<div class="lrow"><div class="av" onclick="close_('mFriends');openProf('${n}')">${botSvg(n)}</div><div class="nmx">${n}<small>ID ${botId(n)} · ${fmt(bot(n).w)} побед</small></div><button class="btn" onclick="close_('mFriends');inviteDurak('${n}')">Играть</button></div>`).join('')
   :'<p style="text-align:center;padding:14px 0">Пока никого. Найди игрока по ID или нику 🙂</p>';
  findPlayers();open_('mFriends')}
@@ -639,10 +641,11 @@ const myNick=()=>S.nick||S.tgName||('Игрок'+S.id.slice(-4));
 function openNick(){$('nickIn').value=myNick();$('nickErr').textContent='';open_('mNick');setTimeout(()=>$('nickIn').focus(),100)}
 function saveNick(){const v=$('nickIn').value.trim().replace(/\s+/g,' ');
  if(!/^[A-Za-zА-Яа-яЁё0-9_ ]{3,16}$/.test(v)){$('nickErr').textContent='Ник должен быть 3–16 символов: буквы, цифры, _ и пробел';return}
+ if(ONL)return onNick(v);
  if(BOTN.some(n=>n.toLowerCase()===v.toLowerCase())){$('nickErr').textContent='Этот ник уже занят';return}
  S.nick=v;save();close_('mNick');renderLobby();toast('Ник сохранён')}
 function copyId(){try{navigator.clipboard.writeText(S.id).then(()=>toast('ID скопирован: '+S.id),()=>toast('Твой ID: '+S.id))}catch(e){toast('Твой ID: '+S.id)}}
-function findPlayers(){const q=$('fq').value.trim().toLowerCase();
+function findPlayers(){if(ONL)return onFind();const q=$('fq').value.trim().toLowerCase();
  if(!q){$('fFound').innerHTML='';return}
  if(q===S.id||q===myNick().toLowerCase()){$('fFound').innerHTML='<p style="text-align:center;margin:10px 0">Это ты 🙂</p>';return}
  const res=BOTN.filter(n=>botId(n)===q||n.toLowerCase().includes(q)).slice(0,8);
@@ -1308,10 +1311,100 @@ function rRender(){
 }
 
 
+
+/* ===== Сервер (онлайн-режим в Telegram) ===== */
+const API='https://efdydqyslwqrefxqyhuu.supabase.co/functions/v1/api';
+var ONL=false,TGI='',syncing=false,syncT=0;
+async function api(action,data){
+ const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,initData:TGI,...(data||{})})});
+ let j={};try{j=await r.json()}catch(e){j={error:'net'}}
+ if(!r.ok&&!j.error)j.error='http'+r.status;return j}
+const curTotal=()=>S.balance+(S.inPlay||0)+(S.rPending||0);
+async function goOnline(initData){
+ TGI=initData;
+ try{
+  const j=await api('login');if(!j.me)return;
+  const me=j.me;ONL=true;
+  S.id=String(me.pid);S.nick=me.nick;S.ava=me.avatar;S.avaF=me.avatar_f;
+  S.balance=Math.max(0,me.balance-(S.inPlay||0)-(S.rPending||0));S.srv=me.balance;
+  S.lastBonus=me.last_bonus?Date.parse(me.last_bonus):0;
+  S.st.w=me.wins;S.st.g=me.games;S.friendsOn=j.friends||[];
+  localSave();renderLobby();updBal();
+  $('leadNote').textContent='Все игроки «Козыря». Нажми на игрока, чтобы открыть профиль.';
+  $('frNote').textContent='Ищи любого игрока по ID (6 цифр) или по нику.';
+ }catch(e){}
+}
+function queueSync(){if(!ONL)return;clearTimeout(syncT);syncT=setTimeout(doSync,700)}
+async function doSync(){
+ if(syncing||!ONL)return;const d=curTotal()-S.srv;if(!d)return;
+ syncing=true;let ok=false;
+ try{const j=await api('delta',{d});
+  if(typeof j.balance==='number'){ok=true;const exp=S.srv+d;S.srv=j.balance;
+   if(j.balance!==exp){S.balance=Math.max(0,S.balance+(j.balance-exp));toast('Лимит выигрыша за час — остаток не засчитан');localSave();updBal()}}}catch(e){}
+ syncing=false;
+ if(!ok)setTimeout(queueSync,5000);else if(curTotal()!==S.srv)queueSync();
+}
+async function onBonus(){
+ const j=await api('bonus').catch(()=>({error:'net'}));
+ if(j.balance!=null){S.srv+=j.bonus;S.balance+=j.bonus;S.lastBonus=Date.now();save();renderLobby();toast('+2 000 фишек!')}
+ else if(j.error==='early'){S.lastBonus=j.last_bonus?Date.parse(j.last_bonus):Date.now();localSave();renderLobby();toast('Бонус уже забран — приходи позже')}
+ else toast('Нет связи с сервером, попробуй ещё раз')}
+async function onNick(v){
+ const j=await api('nick',{nick:v}).catch(()=>({error:'net'}));
+ if(j.nick){S.nick=j.nick;localSave();close_('mNick');renderLobby();toast('Ник сохранён')}
+ else $('nickErr').textContent=j.error==='taken'?'Этот ник уже занят':j.error==='bad_nick'?'Ник должен быть 3–16 символов: буквы, цифры, _ и пробел':'Нет связи с сервером'}
+const pSvg=r=>avatarSVG(r.avatar||'p3',!!r.avatar_f);
+const favName=f=>f?GNAME[f]:'—';
+async function onLead(t){
+ LT=t;$('tbW').classList.toggle('on',t==='w');$('tbC').classList.toggle('on',t==='c');
+ $('lbList').innerHTML='<p style="text-align:center;color:var(--mut)">Загрузка…</p>';
+ const j=await api('top',{by:t}).catch(()=>({}));
+ if(!j.list){$('lbList').innerHTML='<p style="text-align:center">Нет связи с сервером</p>';return}
+ const me=+S.id;const fr=new Set((S.friendsOn||[]).map(f=>f.pid));
+ let h=j.list.map((x,i)=>`<div class="lrow${x.pid===me?' me':''}" onclick="${x.pid===me?'':`openP(${x.pid})`}"><div class="pl${i<3?' top':''}">${['🥇','🥈','🥉'][i]||i+1}</div><div class="av">${pSvg(x)}</div><div class="nmx">${x.nick}${x.pid===me?' (ты)':''}${fr.has(x.pid)?' 👥':''}<small>ID ${x.pid} · любит: ${favName(x.fav)}</small></div><div class="val">${t==='w'?fmt(x.wins)+' 🏆':fmt(x.balance)}</div></div>`).join('');
+ if(!j.list.some(x=>x.pid===me))h+=`<div class="lrow me"><div class="pl">${j.myRank}</div><div class="av">${myAva()}</div><div class="nmx">${myNick()} (ты)<small>ID ${S.id}</small></div><div class="val">${t==='w'?fmt(S.st.w)+' 🏆':fmt(curTotal())}</div></div>`;
+ $('lbList').innerHTML=h}
+async function openP(pid){
+ const j=await api('profile',{pid}).catch(()=>({}));
+ if(!j.player){toast('Игрок не найден');return}
+ const x=j.player;close_('mFriends');
+ $('profBody').innerHTML=`<div class="pbig">${pSvg(x)}</div><h3>${x.nick}</h3><p>ID ${x.pid} · ${j.friend?'👥 у тебя в друзьях':'игрок'} · место в топе: ${j.rank}</p>
+  <div class="pstats"><div><b>${fmt(x.wins)}</b>побед</div><div><b>${fmt(x.balance)}</b>фишек</div><div><b>${favName(x.fav)}</b>любит</div></div>
+  <div class="row" style="margin-bottom:8px"><button class="btn ${j.friend?'ghost':''}" onclick="frSet(${x.pid},${!j.friend})">${j.friend?'Удалить из друзей':'➕ Добавить в друзья'}</button></div>
+  <p class="note2">Игра с друзьями за одним столом — скоро</p>`;
+ open_('mProf')}
+async function frSet(pid,add,reopen){
+ const j=await api(add?'friend_add':'friend_del',{fid:pid}).catch(()=>({}));
+ if(!j.friends){toast('Нет связи с сервером');return}
+ S.friendsOn=j.friends;localSave();updFriendsCnt();if(add)toast('Добавлен в друзья 👥');
+ if(reopen)onFriends();else openP(pid);
+ if($('sLead').classList.contains('on'))onLead(LT)}
+function botCard(name){
+ $('profBody').innerHTML=`<div class="pbig">${botSvg(name)}</div><h3>${name}</h3><p>🤖 Бот-соперник</p>
+  <div class="row"><button class="btn ghost" onclick="close_('mProf');inviteDurak('${name}')">🃏 Сыграть в Дурака 1 на 1</button></div>`;
+ open_('mProf')}
+function frRow(x,btn){return`<div class="lrow"><div class="av" onclick="openP(${x.pid})">${pSvg(x)}</div><div class="nmx" onclick="openP(${x.pid})">${x.nick}<small>ID ${x.pid} · ${fmt(x.wins)} побед</small></div>${btn}</div>`}
+function onFriends(){
+ const L=S.friendsOn||[];
+ $('fList').innerHTML=L.length?L.map(x=>frRow(x,`<button class="btn ghost" onclick="frSet(${x.pid},false,1)">✕</button>`)).join(''):'<p style="text-align:center;padding:14px 0">Пока никого. Найди игрока по ID или нику 🙂</p>';
+ onFind();open_('mFriends');
+ api('friends').then(j=>{if(j.friends){S.friendsOn=j.friends;localSave();updFriendsCnt()}}).catch(()=>{})}
+let findT=0;
+function onFind(){clearTimeout(findT);const q=$('fq').value.trim();
+ if(!q){$('fFound').innerHTML='';return}
+ if(q===S.id||q.toLowerCase()===myNick().toLowerCase()){$('fFound').innerHTML='<p style="text-align:center;margin:10px 0">Это ты 🙂</p>';return}
+ findT=setTimeout(async()=>{$('fFound').innerHTML='<p style="text-align:center;color:var(--mut)">Ищем…</p>';
+  const j=await api('search',{q}).catch(()=>({}));if($('fq').value.trim()!==q)return;
+  if(!j.list){$('fFound').innerHTML='<p style="text-align:center">Нет связи с сервером</p>';return}
+  const fr=new Set((S.friendsOn||[]).map(f=>f.pid));
+  $('fFound').innerHTML=j.list.length?'<div class="h2" style="margin-top:12px">Найдено</div>'+j.list.map(x=>frRow(x,fr.has(x.pid)?'<button class="btn ghost" disabled>✓ Друг</button>':`<button class="btn" onclick="frSet(${x.pid},true,1)">➕</button>`)).join('')
+   :'<p style="text-align:center;margin:10px 0">Никого не нашли. Проверь ID или ник.</p>'},400)}
+
 /* ===== Telegram ===== */
 function tgInit(){try{const tg=window.Telegram&&Telegram.WebApp;if(!tg||!tg.initData)return;tg.ready();tg.expand();
  tg.setHeaderColor&&tg.setHeaderColor('#16211d');tg.setBackgroundColor&&tg.setBackgroundColor('#0d1512');
- const u=tg.initDataUnsafe&&tg.initDataUnsafe.user;if(u&&u.first_name){S.tgName=u.first_name;save();renderLobby()}}catch(e){}}
+ const u=tg.initDataUnsafe&&tg.initDataUnsafe.user;if(u&&u.first_name){S.tgName=u.first_name;localSave();renderLobby()}
+ goOnline(tg.initData)}catch(e){}}
 window.addEventListener('load',tgInit);
 
 renderLobby();
