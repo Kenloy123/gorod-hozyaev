@@ -52,11 +52,11 @@ jobs:
           supabase init --force >/dev/null 2>&1 || true
           mkdir -p supabase/functions/api
           cp kozyr/server/2_funkciya_api.ts supabase/functions/api/index.ts
-          supabase functions deploy api --project-ref "$REF" --no-verify-jwt --use-api
+          supabase functions deploy api --project-ref "$REF" --no-verify-jwt --use-api --yes
 
       - name: 3. Токен бота
         if: env.BOT != ''
-        run: supabase secrets set TG_BOT_TOKEN="$BOT" --project-ref "$REF"
+        run: supabase secrets set TG_BOT_TOKEN="$BOT" --project-ref "$REF" --yes
 
       - name: Итог
         run: echo "Сервер Козыря залит ✅"
