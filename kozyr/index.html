@@ -261,6 +261,14 @@ button{font:inherit;cursor:pointer;border:0}
 .srch{display:flex;gap:8px}.srch input{flex:1;min-width:0;background:#0f1714;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:11px 12px;font-size:15px;outline:none}
 .srch input:focus{border-color:var(--gold)}
 .lrow .idsm{color:var(--mut);font-size:11px;font-weight:400}
+.mbtn{display:flex;align-items:center;gap:12px;width:100%;background:#0f1714;border:1px solid var(--line);color:var(--txt);border-radius:14px;padding:14px;margin-bottom:10px;text-align:left}
+.mbtn .ic{font-size:26px;width:36px;text-align:center}.mbtn b{display:block;font-size:16px}.mbtn small{color:var(--mut)}
+.mbtn:disabled{opacity:.45}
+.rcode{background:linear-gradient(135deg,#2a2410,#1a1a10);border:1px solid #4a3e18;border-radius:16px;padding:14px;text-align:center;margin-bottom:14px}
+.rcode .big{font-size:34px;font-weight:900;letter-spacing:6px;color:var(--gold);margin:4px 0}
+.slot{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px dashed var(--line);margin-bottom:6px;color:var(--mut);min-height:58px}
+.inv{display:flex;align-items:center;gap:10px;background:#1d2a45;border:1px solid #2e4a80;border-radius:14px;padding:10px 12px;margin-bottom:10px}
+.inv div{flex:1;font-size:13px}.inv b{font-size:14px}
 </style>
 </head>
 <body>
@@ -273,6 +281,7 @@ button{font:inherit;cursor:pointer;border:0}
   </div>
   <div class="lobby">
     <div class="prof"><div class="me-ava" id="myAva" onclick="openAva()"></div><div style="flex:1;min-width:0"><b id="helloName" onclick="openNick()" style="cursor:pointer">Игрок</b> <span onclick="openNick()" style="cursor:pointer;font-size:13px">✏️</span><div class="idline">ID: <b id="myId"></b> <button class="cpy" onclick="copyId()">копировать</button></div></div><button class="btn ghost" onclick="openAva()">Аватар</button></div>
+    <div id="invBox"></div>
     <div class="lbtns"><button onclick="openLead()">🏆 Топ игроков</button><button onclick="openFriends()">👥 Друзья <span id="fCnt"></span></button></div>
     <div class="hello">Игра на игровые фишки. Фишки нельзя вывести — только играть.</div>
     <div class="bonus">
@@ -370,7 +379,7 @@ button{font:inherit;cursor:pointer;border:0}
 </div>
 <!-- РЕЗУЛЬТАТ -->
 <div class="modal" id="mRes"><div class="sheet" style="text-align:center"><div style="font-size:44px" id="resEmo"></div><h3 id="resT"></h3><p id="resP" style="font-size:15px;color:var(--txt);line-height:1.5"></p>
- <div class="row"><button class="btn ghost" onclick="close_('mRes');D=null;if(K)K.quit=true;K=null;toLobby()">В лобби</button><button class="btn" id="resBtn" onclick="resGo()">Ещё раз</button></div></div></div>
+ <div class="row"><button class="btn ghost" id="resLobby" onclick="close_('mRes');D=null;if(K)K.quit=true;K=null;toLobby()">В лобби</button><button class="btn" id="resBtn" onclick="resGo()">Ещё раз</button></div></div></div>
 <!-- ПОДТВЕРЖДЕНИЕ -->
 <div class="modal" id="mConf" onclick="if(event.target===this)close_('mConf')"><div class="sheet" style="text-align:center"><h3>Выйти из игры?</h3><p id="cfP"></p>
  <div class="row"><button class="btn ghost" onclick="close_('mConf')">Остаться</button><button class="btn" onclick="cfYes()">Выйти</button></div></div></div>
@@ -407,6 +416,14 @@ button{font:inherit;cursor:pointer;border:0}
 <!-- НИК -->
 <div class="modal" id="mNick" onclick="if(event.target===this)close_('mNick')"><div class="sheet"><h3>Твой ник</h3><p>3–16 символов: буквы, цифры, _ и пробел. Его видят другие игроки.</p>
  <div class="srch"><input id="nickIn" maxlength="16" autocomplete="off"><button class="btn" onclick="saveNick()">Сохранить</button></div><p id="nickErr" style="color:#ff8a8a;min-height:16px;margin:6px 0 0"></p></div></div>
+<!-- ВЫБОР РЕЖИМА -->
+<div class="modal" id="mMode" onclick="if(event.target===this)close_('mMode')"><div class="sheet"><h3 id="modeT"></h3><p id="modeP"></p><div id="modeBtns"></div></div></div>
+<!-- КОМНАТА -->
+<div class="screen" id="sRoom">
+  <div class="top"><button class="back" onclick="rLeaveRoom()">‹</button><div><b>Комната</b><div class="sub" id="rmSub"></div></div><div class="bal" style="margin-left:auto"><i class="chipico"></i><span class="balv">0</span></div></div>
+  <div class="lobby" id="rmBody"></div>
+  <div class="ctrl2" id="rmCtrl"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -436,9 +453,9 @@ function renderLobby(){
  $('games').innerHTML=GAMES.map(([k,ic,n])=>`<div class="game${gs===k?' sel':''}" onclick="S.game='${k}';save();renderLobby()"><div class="ic">${ic}</div><b>${n}</b></div>`).join('');
  const row=(ic,title,sub,fn)=>`<div class="tbl"><div class="dot">${ic}</div><div><b>${title}</b><small>${sub}</small></div><button class="btn" onclick="${fn}">Играть</button></div>`;
  let html='',ttl='';
- if(gs==='poker'){ttl='Столы — Техасский холдем';html=TABLES.map((t,i)=>row(t.ic,t.name,`Блайнды ${fmt(t.sb)}/${fmt(t.bb)} · вход от ${fmt(t.min)}`,`sit(${i})`)).join('')}
- if(gs==='durak'){ttl='Дурак подкидной · 36 карт';html=DUR_OPTS.map((o,i)=>row(o.n===2?'⚔️':o.n===3?'👥':'👨‍👩‍👦',o.n===2?'1 на 1':'На '+o.n+' игроков',`Ставка ${fmt(o.stake)}`+(o.n>2?` · дурак платит ${fmt(o.stake*(o.n-1))}`:''),`durStart(${i})`)).join('')}
- if(gs==='kozel'){ttl='Козёл · 2 на 2 · до 12 очков';html=KOZ_OPTS.map((o,i)=>row(['🟢','🔵','🔴'][i],['Дворовый','Серьёзный','По-крупному'][i],`${fmt(o.stake)} за каждые 2 очка поражения`,`kozStart(${i})`)).join('')+'<div style="text-align:center;margin-top:6px"><button class="btn ghost" onclick="open_(\'mKozRules\')">Правила Козла</button></div>'}
+ if(gs==='poker'){ttl='Столы — Техасский холдем';html=TABLES.map((t,i)=>row(t.ic,t.name,`Блайнды ${fmt(t.sb)}/${fmt(t.bb)} · вход от ${fmt(t.min)}`,`pickMode('poker',${i})`)).join('')}
+ if(gs==='durak'){ttl='Дурак подкидной · 36 карт';html=DUR_OPTS.map((o,i)=>row(o.n===2?'⚔️':o.n===3?'👥':'👨‍👩‍👦',o.n===2?'1 на 1':'На '+o.n+' игроков',`Ставка ${fmt(o.stake)}`+(o.n>2?` · дурак платит ${fmt(o.stake*(o.n-1))}`:''),`pickMode('durak',${i})`)).join('')}
+ if(gs==='kozel'){ttl='Козёл · 2 на 2 · до 12 очков';html=KOZ_OPTS.map((o,i)=>row(['🟢','🔵','🔴'][i],['Дворовый','Серьёзный','По-крупному'][i],`${fmt(o.stake)} за каждые 2 очка поражения`,`pickMode('kozel',${i})`)).join('')+'<div style="text-align:center;margin-top:6px"><button class="btn ghost" onclick="open_(\'mKozRules\')">Правила Козла</button></div>'}
  if(gs==='roul'){ttl='Рулетка · европейская';html=row('🎡','Рулетка','Одно зеро · ставки от 10 · число платит 35:1','rouStart()')}
  $('pokRules').style.display=gs==='poker'?'':'none';$('gTitle').textContent=ttl;$('tables').innerHTML=html;
  const left=S.lastBonus+864e5-Date.now();
@@ -880,7 +897,7 @@ function toLobby(){showScreen('sLobby');renderLobby()}
 function backsFan(n){let h='';const m=Math.min(n,8);for(let i=0;i<m;i++)h+=`<div class="card bk xs" style="margin-left:${i?-14:0}px"></div>`;return h+(n?`<span class="cnt">${n}</span>`:'')}
 function fanStyle(n,cw){const W=Math.min(window.innerWidth,520)-24;if(n<2)return 0;return Math.min(4,(W-n*cw)/(n-1))}
 let resAgain=null;
-function showRes(emo,title,text,again){$('resBtn').textContent='Ещё раз';$('resEmo').textContent=emo;$('resT').textContent=title;$('resP').innerHTML=text;resAgain=again;open_('mRes')}
+function showRes(emo,title,text,again){$('resBtn').textContent='Ещё раз';$('resLobby').onclick=()=>{close_('mRes');D=null;if(K)K.quit=true;K=null;toLobby()};$('resEmo').textContent=emo;$('resT').textContent=title;$('resP').innerHTML=text;resAgain=again;open_('mRes')}
 function resGo(){close_('mRes');if(resAgain)resAgain()}
 let confirmFn=null;
 function askLeave(text,fn){$('cfP').textContent=text;confirmFn=fn;open_('mConf')}
@@ -954,8 +971,8 @@ function dPlay(i,c,asDef){
  else{D.table.push({a:c});D.msg=(i===0?'Ты ':'')+(D.table.length===1?(i===0?'ходишь':p.name+' ходит'):(i===0?'подкидываешь':p.name+' подкидывает'))}
  D.passed.clear();dTick();
 }
-function dTake(i){if(i>0)botSay('durak',i,['Беру…','Ладно, забираю','Эх, беру','Ну и ладно 😤'],.6);D.taking=true;D.passed.clear();D.msg=D.players[i].name+(i===0?', берёшь':' берёт');SND.fold();dTick()}
-function dPass(i){D.passed.add(i);dTick()}
+function dTake(i){if(D&&D.online)return rAct('take');if(i>0)botSay('durak',i,['Беру…','Ладно, забираю','Эх, беру','Ну и ладно 😤'],.6);D.taking=true;D.passed.clear();D.msg=D.players[i].name+(i===0?', берёшь':' берёт');SND.fold();dTick()}
+function dPass(i){if(D&&D.online)return rAct('pass');D.passed.add(i);dTick()}
 function dEndBout(){
  const def=D.players[D.def];
  if(D.taking){D.table.forEach(x=>{def.hand.push(x.a);if(x.d)def.hand.push(x.d)});D.msg=def.name+(D.def===0?' — взял':' забрал карты')}
@@ -987,7 +1004,7 @@ function dFinish(meFool,draw){
    if(fool>0)botSay('durak',fool,['Ну всё, я дурак 🤡','Не везёт…','Реванш!'],1);
    dAfter(()=>showRes('🏆','Ты не дурак!','Выигрыш: <b style="color:#7dffa8">+'+fmt(D.stake)+'</b>',again),1300)}
 }
-function durLeave(){
+function durLeave(){if(D&&D.online){if(D.over){rLeaveRoom();return}askLeave('Выйти из комнаты? Пока тебя нет, за тебя будут ходить автоматически (и, скорее всего, ты останешься дураком).',()=>{rStop();D=null;toLobby()});return}
  if(!D||D.over){D=null;toLobby();return}
  askLeave('Если выйдешь сейчас, тебе засчитают поражение (−'+fmt(D.stake*(D.n-1))+').',()=>{S.balance-=D.stake*(D.n-1);save();D.over=true;D=null;toLobby()});
 }
@@ -1020,7 +1037,7 @@ function dBotAttack(i){
  dPass(i);
 }
 /* --- игрок --- */
-function dCard(idx){
+function dCard(idx){if(D&&D.online){if(D.cur!==0)return;const c=D.players[0].hand[idx];if(D.mode==='def'&&!dUnbeaten().some(x=>dBeats(c,x.a))){toast('Этой картой не побить');return}if(D.mode==='att'&&!dCanThrow(c)){toast(D.table.length?'Подкидывать можно только карты того же достоинства':'Нельзя');return}return rAct('card',{r:c.r,s:c.s})}
  if(!D||D.over||D.cur!==0)return;
  const c=D.players[0].hand[idx];
  if(D.mode==='def'){if(!dUnbeaten().some(x=>dBeats(c,x.a))){toast('Этой картой не побить');return}dPlay(0,c,true)}
@@ -1033,7 +1050,7 @@ function dRender(){
  for(let i=1;i<D.n;i++){const p=D.players[i];
   let role='',rc='';
   if(p.out){role='Вышел';rc='a-call'}else if(i===D.def){role=D.taking?'Берёт':'Отбивается';rc=D.taking?'a-fold':'a-check'}else if(i===D.att){role='Ходит';rc='a-raise'}
-  ops+=`<div class="op2${D.cur===i?' turn':''}${p.out?' outp':''}" id="dop${i}" onclick="openProf('${p.name}')">${D.cur===i?'<div class="turntag">'+(D.mode==='def'?'ОТБИВАЕТСЯ':'ХОДИТ')+'</div>':''}<div class="ava"><div class="face">${p.svg}</div></div><div class="nm">${p.name}${S.friends.includes(p.name)?' 👥':''}</div><div class="backs">${backsFan(p.hand.length)}</div>${role?`<div class="st ${rc}">${role}</div>`:'<div class="st"></div>'}</div>`;
+  ops+=`<div class="op2${D.cur===i?' turn':''}${p.out?' outp':''}" id="dop${i}" onclick="${p.pid?`openP(${p.pid})`:`openProf('${p.name}')`}">${D.cur===i?'<div class="turntag">'+(D.mode==='def'?'ОТБИВАЕТСЯ':'ХОДИТ')+'</div>':''}<div class="ava"><div class="face">${p.svg}</div></div><div class="nm">${p.name}${S.friends.includes(p.name)?' 👥':''}</div><div class="backs">${backsFan(p.hand.length)}</div>${role?`<div class="st ${rc}">${role}</div>`:'<div class="st"></div>'}</div>`;
  }
  const pairs=D.table.map(x=>`<div class="pair">${cardHTML(x.a)}${x.d?`<div class="dcard">${cardHTML(x.d)}</div>`:''}</div>`).join('');
  const deck=`<div class="deckw">${D.deck.length>1?'<div class="card bk sm"></div>':''}${D.deck.length?cardHTML(D.trumpCard,'sm'):''}${D.deck.length?`<span class="cnt">${D.deck.length}</span>`:''}</div>`;
@@ -1052,6 +1069,7 @@ function dRender(){
  else if(D.players[0].out)hint='Ты вышел из игры';
  else if(D.def===0&&D.taking)hint='Ты берёшь — соперники подкидывают…';
  else hint=D.cur>0?D.players[D.cur].name+' думает…':'';
+ if(D.online&&!D.over&&hint)hint+=` · ⏱${D.turnLeft}с`;
  $('dHint').innerHTML=`<span class="${myTurn?'myturn':''}">${hint}</span><button class="emobtn" onclick="openEmo()">💬</button>`;
  $('dCtrl').innerHTML=btn?`<div class="row">${btn}</div>`:'';
 }
@@ -1332,6 +1350,7 @@ async function goOnline(initData){
   localSave();renderLobby();updBal();
   $('leadNote').textContent='Все игроки «Козыря». Нажми на игрока, чтобы открыть профиль.';
   $('frNote').textContent='Ищи любого игрока по ID (6 цифр) или по нику.';
+  checkInvites();
  }catch(e){}
 }
 function queueSync(){if(!ONL)return;clearTimeout(syncT);syncT=setTimeout(doSync,700)}
@@ -1399,6 +1418,106 @@ function onFind(){clearTimeout(findT);const q=$('fq').value.trim();
   const fr=new Set((S.friendsOn||[]).map(f=>f.pid));
   $('fFound').innerHTML=j.list.length?'<div class="h2" style="margin-top:12px">Найдено</div>'+j.list.map(x=>frRow(x,fr.has(x.pid)?'<button class="btn ghost" disabled>✓ Друг</button>':`<button class="btn" onclick="frSet(${x.pid},true,1)">➕</button>`)).join('')
    :'<p style="text-align:center;margin:10px 0">Никого не нашли. Проверь ID или ник.</p>'},400)}
+
+
+/* ===== Выбор режима и комнаты ===== */
+const GTITLE={poker:'Покер',durak:'Дурак',kozel:'Козёл'};
+function pickMode(g,i){
+ const room=g==='durak';const stake=g==='durak'?DUR_OPTS[i].stake:0;
+ $('modeT').textContent=GTITLE[g]+' — как играем?';
+ $('modeP').textContent=ONL?'':'Комнаты с друзьями работают, когда игра открыта в Telegram-боте.';
+ const b=(ic,t,sub,fn,dis)=>`<button class="mbtn" onclick="${fn}" ${dis?'disabled':''}><span class="ic">${ic}</span><span><b>${t}</b><small>${sub}</small></span></button>`;
+ const bots=g==='poker'?`close_('mMode');sit(${i})`:g==='durak'?`close_('mMode');durStart(${i})`:`close_('mMode');kozStart(${i})`;
+ $('modeBtns').innerHTML=b('🤖','С ботами','Начать сразу',bots)+
+  (room?b('➕','Создать комнату',`Ставка ${fmt(stake)} · позови друзей по ID`,`rCreate(${stake})`,!ONL)+b('🔑','Войти по коду','Друг скажет тебе код комнаты','rJoinAsk()',!ONL)
+   :b('➕','Создать комнату','Скоро — сначала запускаем онлайн-Дурака','',true)+b('🔑','Войти по коду','Скоро','',true));
+ open_('mMode')}
+function rJoinAsk(){
+ $('modeT').textContent='Войти в комнату';$('modeP').textContent='Введи код из 5 символов, который тебе сказал друг.';
+ $('modeBtns').innerHTML='<div class="srch"><input id="joinCode" maxlength="5" placeholder="Например K7XQ2" style="text-transform:uppercase;letter-spacing:3px" autocomplete="off"><button class="btn" onclick="rJoin($(\'joinCode\').value)">Войти</button></div>';
+ setTimeout(()=>$('joinCode').focus(),100)}
+const RERR={no_room:'Комната не найдена — проверь код',full:'Комната заполнена',started:'Игра в этой комнате уже идёт',few:'Нужно минимум 2 игрока',
+ no_player:'Игрок с таким ID не найден',already:'Этот игрок уже в комнате',busy:'Сервер занят, попробуй ещё раз',not_host:'Начать может только хозяин комнаты',
+ not_in_room:'Тебя нет в этой комнате',playing:'Идёт игра',auth:'Открой игру через Telegram-бота',net:'Нет связи с сервером'};
+function rErr(j){if(j.error==='poor')return`У игрока ${j.nick} не хватает фишек (нужно ${fmt(j.need)})`;if(j.error==='move')return j.msg;return RERR[j.error]||'Ошибка: '+j.error}
+let RM=null,rTimer=0,rBusy=false;
+async function rCreate(stake){close_('mMode');const j=await api('room_create',{stake}).catch(()=>({error:'net'}));if(j.error){toast(rErr(j));return}rEnter(j)}
+async function rJoin(code){code=String(code||'').trim().toUpperCase();if(code.length!==5){toast('Код — 5 символов');return}
+ close_('mMode');const j=await api('room_join',{code}).catch(()=>({error:'net'}));if(j.error){toast(rErr(j));return}rEnter(j)}
+function rEnter(j){RM={code:j.room.code,ver:-1,room:null,view:null,paidVer:null,shownOver:false};rApply(j);rStop();rTimer=setInterval(rPoll,1500)}
+function rStop(){clearInterval(rTimer);rTimer=0}
+async function rPoll(){if(!RM||rBusy)return;rBusy=true;
+ try{const j=await api('room_get',{code:RM.code,ver:RM.ver});
+  if(j.same){if(D&&D.online){D.turnLeft=j.turnLeft;dRender()}}
+  else if(j.error){if(j.error==='no_room'||j.error==='not_in_room'){rStop();RM=null;D=null;toast('Комната закрыта');toLobby()}}
+  else rApply(j)}catch(e){}
+ rBusy=false}
+async function rAct(a,card){if(!RM)return;rBusy=true;
+ const j=await api('room_act',{code:RM.code,a,card}).catch(()=>({error:'net'}));rBusy=false;
+ if(j.error){toast(rErr(j));return}rApply(j)}
+function rApply(j){
+ const prevView=RM.view;RM.room=j.room;RM.ver=j.room.ver;RM.view=j.view;
+ const st=j.room.status;
+ if((st==='play'||st==='done')&&j.view){rGame(prevView);return}
+ rRoomScreen()}
+function rRoomScreen(){
+ const r=RM.room;const me=+S.id;const host=r.host===me;
+ if(!$('sRoom').classList.contains('on'))showScreen('sRoom');
+ $('rmSub').textContent='Дурак · ставка '+fmt(r.stake);
+ let h=`<div class="rcode"><div style="font-size:12px;color:var(--mut)">КОД КОМНАТЫ</div><div class="big">${r.code}</div><button class="cpy" onclick="rCopy()">скопировать код</button><div style="font-size:12px;color:var(--mut);margin-top:6px">Дурак подкидной · до ${r.maxp} игроков · проигравший платит ${fmt(r.stake)} каждому</div></div>`;
+ h+='<div class="h2">Игроки</div>';
+ r.players.forEach(p=>{h+=`<div class="lrow${p.pid===me?' me':''}"><div class="av">${pSvg(p)}</div><div class="nmx">${p.nick}${p.pid===me?' (ты)':''}<small>ID ${p.pid} · ${fmt(p.wins||0)} побед</small></div>${p.pid===r.host?'<div>👑</div>':''}</div>`});
+ for(let k=r.players.length;k<r.maxp;k++)h+='<div class="slot">⏳ свободное место</div>';
+ h+=`<div class="h2" style="margin-top:14px">Пригласить по ID</div><div class="srch"><input id="invId" inputmode="numeric" maxlength="6" placeholder="ID игрока (6 цифр)"><button class="btn" onclick="rInvite($('invId').value)">Позвать</button></div>`;
+ const fr=(S.friendsOn||[]).filter(f=>!r.players.some(p=>p.pid===f.pid));
+ if(fr.length)h+='<div class="h2" style="margin-top:12px">Друзья</div>'+fr.map(f=>`<div class="lrow"><div class="av">${pSvg(f)}</div><div class="nmx">${f.nick}<small>ID ${f.pid}</small></div><button class="btn ${r.invited.includes(f.pid)?'ghost':''}" onclick="rInvite(${f.pid})">${r.invited.includes(f.pid)?'Позван ✓':'Позвать'}</button></div>`).join('');
+ h+='<p class="note2" style="padding-top:10px">Приглашённый увидит приглашение в лобби. Или просто скажи ему код комнаты.</p>';
+ $('rmBody').innerHTML=h;
+ $('rmCtrl').innerHTML=host?`<div class="row"><button class="br" onclick="rStart()" ${r.players.length<2?'disabled':''}>${r.players.length<2?'Ждём игроков…':'▶ Начать игру ('+r.players.length+')'}</button></div>`
+  :'<div class="wait" style="padding:14px 0">Ждём, пока хозяин 👑 начнёт игру…</div>'}
+function rCopy(){try{navigator.clipboard.writeText(RM.code).then(()=>toast('Код скопирован'),()=>toast('Код: '+RM.code))}catch(e){toast('Код: '+RM.code)}}
+async function rInvite(id){id=String(id).trim();if(!/^\d{6}$/.test(id)){toast('ID — это 6 цифр');return}
+ if(id===S.id){toast('Это твой ID 🙂');return}
+ const j=await api('room_invite',{code:RM.code,fid:+id}).catch(()=>({error:'net'}));if(j.error){toast(rErr(j));return}toast('Приглашение отправлено');rApply(j)}
+async function rStart(){const j=await api('room_start',{code:RM.code}).catch(()=>({error:'net'}));if(j.error){toast(rErr(j));return}close_('mRes');rApply(j)}
+async function rLeaveRoom(){if(!RM){toLobby();return}rStop();close_('mRes');
+ const st=RM.room&&RM.room.status;if(st!=='play')await api('room_leave',{code:RM.code}).catch(()=>{});RM=null;D=null;toLobby()}
+const LASTT={att:(n,me)=>me?'Ты ходишь':n+' ходит',def:(n,me)=>me?'Ты отбиваешься':n+' бьёт',taking:(n,me)=>me?'Ты берёшь':n+' берёт',pass:(n,me)=>me?'Ты пасуешь':n+': хватит',take:(n,me)=>me?'Ты забрал карты':n+' забрал карты',bito:()=>'Бито'};
+function rGame(prev){
+ const v=RM.view,r=RM.room,n=v.n,me=v.me,rot=i=>(i-me+n)%n,un=k=>(k+me)%n;
+ const players=[];for(let k=0;k<n;k++){const i=un(k),p=r.players[i]||{nick:'?'};
+  players.push({name:k===0?'Ты':p.nick,pid:k===0?0:p.pid,human:k===0,svg:k===0?myAva():pSvg(p),hand:k===0?v.hand.slice():Array(v.counts[i]).fill(null),out:v.out[i]})}
+ const deck=Array(v.deckCount).fill(null);if(v.deckCount)deck[0]=v.trumpCard;
+ const L=v.last;const lname=L&&L.i!=null?(L.i===me?'':r.players[L.i]?.nick||''):'';
+ const newGame=!D||!D.online;
+ D={online:true,n,players,deck,trumpCard:v.trumpCard,trump:v.trump,table:v.table,att:rot(v.att),def:rot(v.def),taking:v.taking,
+  cur:v.cur>=0?rot(v.cur):-1,mode:v.mode,disc:v.disc,over:v.over,msg:L?LASTT[L.t](lname,L.i===me):'',turnLeft:v.turnLeft,passed:new Set(),o:{n,stake:r.stake}};
+ if(!$('sDurak').classList.contains('on')){$('dSub').textContent='Комната '+r.code+' · ставка '+fmt(r.stake);showScreen('sDurak')}
+ if(newGame)for(let k=0;k<12;k++)SND.card(k*.05);
+ else if(prev){const pt=prev.table.reduce((a,x)=>a+1+(x.d?1:0),0),nt=v.table.reduce((a,x)=>a+1+(x.d?1:0),0);
+  if(nt>pt)SND.card();else if(prev.table.length&&!v.table.length)(L&&L.t==='take'?SND.fold:()=>noise(.3,.35,0,1500,.5))();
+  if(v.cur===me&&prev.cur!==me&&!v.over)SND.turn()}
+ dRender();
+ if(!v.over){RM.shownOver=false;return}
+ if(RM.shownOver)return;RM.shownOver=true;
+ const d=(v.res||{})[S.id]||0;
+ if(d&&RM.paidVer!==r.ver){RM.paidVer=r.ver;S.balance+=d;S.srv+=d;localSave();updBal()}
+ const fool=v.fool;const foolName=fool<0?'':fool===me?'Ты':r.players[fool]?.nick;
+ const host=r.host===+S.id;
+ setTimeout(()=>{
+  if(fool<0)showRes('🤝','Ничья','Все вышли одновременно.',null);
+  else if(fool===me){SND.lose();showRes('🤡','Ты дурак!','Проигрыш: <b style="color:#ff8a8a">−'+fmt(-d)+'</b>',null)}
+  else{SND.win();showRes('🏆','Ты не дурак!',`Дурак — <b>${foolName}</b><br>Выигрыш: <b style="color:#7dffa8">+${fmt(d)}</b>`,null)}
+  $('resBtn').textContent=host?'Ещё партию':'Ждать новую партию';
+  resAgain=host?()=>rStart():()=>{D=null;rRoomScreen()};
+  $('resLobby').onclick=()=>{close_('mRes');rLeaveRoom()};
+ },900)}
+/* приглашения в лобби */
+async function checkInvites(){
+ if(!ONL||!$('sLobby').classList.contains('on'))return;
+ const j=await api('invites').catch(()=>({}));const L=j.list||[];
+ $('invBox').innerHTML=L.map(x=>`<div class="inv"><span style="font-size:24px">📨</span><div><b>${x.host}</b> зовёт в Дурака<br>ставка ${fmt(x.stake)} · игроков: ${x.count}</div><button class="btn" onclick="rJoin('${x.code}')">Войти</button></div>`).join('')}
+setInterval(checkInvites,12000);
 
 /* ===== Telegram ===== */
 function tgInit(){try{const tg=window.Telegram&&Telegram.WebApp;if(!tg||!tg.initData)return;tg.ready();tg.expand();

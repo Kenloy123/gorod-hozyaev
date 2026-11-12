@@ -1,6 +1,7 @@
 // КОЗЫРЬ: сервер (Supabase Edge Function с именем "api").
 // Вставить целиком в редактор функции и нажать Deploy.
 // Нужен секрет TG_BOT_TOKEN (токен бота из BotFather) — вставляется в Supabase, никому не отправлять.
+// @ts-nocheck
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -79,6 +80,243 @@ async function friendsOf(pid: number) {
   if (!ids.length) return [];
   const { data } = await db.from("players").select(PUB).in("pid", ids);
   return (data || []).map(pub);
+}
+
+// ===== ДУРАК: движок на сервере (общий для всех игроков комнаты) =====
+// Карта: {r: 6..14, s: 0..3}
+const DK = {
+  shuffle() {
+    const d = [];
+    for (let r = 6; r <= 14; r++) for (let s = 0; s < 4; s++) d.push({ r, s });
+    for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; }
+    return d;
+  },
+  init(n, stake) {
+    const st = { n, stake, deck: DK.shuffle(), hands: [], table: [], passed: [], out: [], places: [], taking: false,
+      disc: 0, over: false, fool: -1, msg: "", turnAt: Date.now(), settled: false, res: null, last: null };
+    for (let i = 0; i < n; i++) { st.hands.push([]); st.out.push(false); }
+    for (let k = 0; k < 6; k++) for (let i = 0; i < n; i++) st.hands[i].push(st.deck.pop());
+    st.trumpCard = st.deck[0]; st.trump = st.trumpCard.s;
+    let best = 99, first = Math.floor(Math.random() * n);
+    st.hands.forEach((h, i) => h.forEach((c) => { if (c.s === st.trump && c.r < best) { best = c.r; first = i; } }));
+    st.att = first; st.def = DK.next(st, first);
+    st.msg = "Первым ходит игрок с младшим козырем";
+    DK.advance(st);
+    return st;
+  },
+  beats(st, x, y) { return (x.s === y.s && x.r > y.r) || (x.s === st.trump && y.s !== st.trump); },
+  next(st, i) { for (let k = 1; k <= st.n; k++) { const j = (i + k) % st.n; if (!st.out[j] && j !== i) return j; } return i; },
+  attOrder(st) {
+    const res = [st.att]; let j = st.att;
+    for (let k = 1; k < st.n; k++) { j = (j + 1) % st.n; if (j !== st.def && j !== st.att && !st.out[j]) res.push(j); }
+    return res;
+  },
+  unbeaten(st) { return st.table.filter((x) => !x.d); },
+  canThrow(st, c) {
+    if (st.table.length >= 6) return false;
+    if (DK.unbeaten(st).length >= st.hands[st.def].length) return false;
+    if (!st.table.length) return true;
+    return st.table.some((x) => x.a.r === c.r || (x.d && x.d.r === c.r));
+  },
+  advance(st) {
+    for (let guard = 0; guard < 50 && !st.over; guard++) {
+      if (!st.taking && DK.unbeaten(st).length) { st.cur = st.def; st.mode = "def"; return; }
+      const order = DK.attOrder(st).filter((i) => !st.passed.includes(i));
+      let found = -1;
+      for (const i of order) {
+        if (st.table.length && !st.hands[i].some((c) => DK.canThrow(st, c))) { st.passed.push(i); continue; }
+        found = i; break;
+      }
+      if (found >= 0) { st.cur = found; st.mode = "att"; return; }
+      DK.endBout(st);
+    }
+  },
+  endBout(st) {
+    const def = st.def;
+    if (st.taking) { st.table.forEach((x) => { st.hands[def].push(x.a); if (x.d) st.hands[def].push(x.d); }); st.last = { t: "take", i: def }; }
+    else { st.disc += st.table.length * 2; st.last = { t: "bito" }; }
+    st.table = [];
+    const order = DK.attOrder(st); if (!order.includes(def)) order.push(def);
+    order.forEach((i) => { while (st.hands[i].length < 6 && st.deck.length) st.hands[i].push(st.deck.pop()); });
+    if (!st.deck.length) st.hands.forEach((h, i) => { if (!st.out[i] && !h.length) { st.out[i] = true; st.places.push(i); } });
+    const left = []; st.out.forEach((o, i) => { if (!o) left.push(i); });
+    if (left.length <= 1) { st.over = true; st.fool = left.length ? left[0] : -1; st.cur = -1; st.mode = ""; return; }
+    const took = st.taking; st.taking = false; st.passed = [];
+    st.att = took ? DK.next(st, def) : (st.out[def] ? DK.next(st, def) : def);
+    st.def = DK.next(st, st.att);
+  },
+  // действие игрока i; возвращает текст ошибки или ""
+  act(st, i, a, card) {
+    if (st.over) return "игра окончена";
+    if (st.cur !== i) return "не твой ход";
+    if (a === "card") {
+      const h = st.hands[i]; const k = h.findIndex((c) => c.r === card?.r && c.s === card?.s);
+      if (k < 0) return "нет такой карты";
+      const c = h[k];
+      if (st.mode === "def") {
+        const t = st.table.find((x) => !x.d && DK.beats(st, c, x.a));
+        if (!t) return "этой картой не побить";
+        t.d = c; h.splice(k, 1); st.last = { t: "def", i };
+      } else {
+        if (!DK.canThrow(st, c)) return "так ходить нельзя";
+        st.table.push({ a: c }); h.splice(k, 1); st.last = { t: "att", i };
+      }
+      st.passed = [];
+    } else if (a === "take") {
+      if (st.mode !== "def") return "сейчас нельзя взять";
+      st.taking = true; st.passed = []; st.last = { t: "taking", i };
+    } else if (a === "pass") {
+      if (st.mode !== "att" || !st.table.length) return "сейчас нельзя";
+      st.passed.push(i); st.last = { t: "pass", i };
+    } else return "неизвестное действие";
+    st.turnAt = Date.now();
+    DK.advance(st);
+    return "";
+  },
+  // если игрок долго не ходит — ход за него
+  timeout(st, ms) {
+    if (st.over || st.cur < 0 || Date.now() - st.turnAt < ms) return false;
+    const i = st.cur, h = st.hands[i];
+    if (st.mode === "def") DK.act(st, i, "take");
+    else if (!st.table.length) { const c = h.slice().sort((x, y) => (x.s === st.trump) - (y.s === st.trump) || x.r - y.r)[0]; DK.act(st, i, "card", c); }
+    else DK.act(st, i, "pass");
+    return true;
+  },
+  view(st, i) {
+    return { n: st.n, me: i, hand: st.hands[i], counts: st.hands.map((h) => h.length), out: st.out, table: st.table,
+      deckCount: st.deck.length, trumpCard: st.trumpCard, trump: st.trump, att: st.att, def: st.def, taking: st.taking,
+      cur: st.cur, mode: st.mode, disc: st.disc, over: st.over, fool: st.fool, res: st.res, last: st.last,
+      turnLeft: st.over ? 0 : Math.max(0, Math.round((45000 - (Date.now() - st.turnAt)) / 1000)) };
+  },
+};
+
+// ---------- комнаты ----------
+const ROOM_STAKES = [100, 500, 1000, 5000];
+const TURN_MS = 45000;
+const CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const newCode = () => Array.from({ length: 5 }, () => CODE_CH[Math.floor(Math.random() * CODE_CH.length)]).join("");
+async function getRoom(code: string) {
+  const { data } = await db.from("rooms").select("*").eq("code", String(code || "").toUpperCase()).maybeSingle();
+  return data;
+}
+// сохранить комнату, только если её никто не изменил параллельно
+async function saveRoom(room: any, patch: any) {
+  const { data } = await db.from("rooms").update({ ...patch, ver: room.ver + 1, updated_at: new Date().toISOString() })
+    .eq("code", room.code).eq("ver", room.ver).select("*").maybeSingle();
+  return data;
+}
+async function roomPlayers(pids: number[]) {
+  if (!pids.length) return [];
+  const { data } = await db.from("players").select("pid,nick,avatar,avatar_f,wins,balance").in("pid", pids);
+  return pids.map((id) => (data || []).find((r) => r.pid === id)).filter(Boolean);
+}
+// подсчитать итог (без денег) — деньги переводятся только после успешного сохранения
+function settle(room: any, st: any) {
+  if (st.settled || !st.over) return false;
+  st.settled = true;
+  const res: Record<number, number> = {};
+  if (st.fool >= 0) {
+    const others = room.players.filter((_: number, i: number) => i !== st.fool);
+    for (const p of others) res[p] = st.stake;
+    res[room.players[st.fool]] = -st.stake * others.length;
+  }
+  st.res = res;
+  return true;
+}
+async function pay(room: any) {
+  const st = room.state;
+  for (const [p, d] of Object.entries(st.res || {})) await db.rpc("apply_delta", { p_pid: Number(p), p_delta: d, p_cap: 1e12 });
+  for (let i = 0; i < room.players.length; i++) await db.rpc("add_stat", { p_pid: room.players[i], p_game: "durak", p_won: i !== st.fool });
+}
+async function roomOut(room: any, pid: number) {
+  const st = room.state;
+  const idx = room.players.indexOf(pid);
+  return {
+    room: { code: room.code, game: room.game, host: room.host, stake: room.stake, maxp: room.maxp, status: room.status, ver: room.ver,
+      players: await roomPlayers(room.players), invited: room.invited },
+    view: st && idx >= 0 ? DK.view(st, idx) : null,
+  };
+}
+async function roomAction(a: string, body: any, me: any) {
+  const pid = me.pid;
+  if (a === "room_create") {
+    const stake = ROOM_STAKES.includes(Number(body.stake)) ? Number(body.stake) : 100;
+    for (let t = 0; t < 10; t++) {
+      const code = newCode();
+      const { data, error } = await db.from("rooms").insert({ code, game: "durak", host: pid, stake, players: [pid] }).select("*").single();
+      if (!error) return out(await roomOut(data, pid));
+    }
+    return out({ error: "server" });
+  }
+  if (a === "invites") {
+    const since = new Date(Date.now() - 3600_000).toISOString();
+    const { data } = await db.from("rooms").select("code,host,stake,players,game").contains("invited", [pid]).eq("status", "wait").gt("updated_at", since).limit(5);
+    const list = [];
+    for (const r of data || []) {
+      if (r.players.includes(pid)) continue;
+      const [h] = await roomPlayers([r.host]);
+      list.push({ code: r.code, game: r.game, stake: r.stake, count: r.players.length, host: h ? h.nick : "?" });
+    }
+    return out({ list });
+  }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const room = await getRoom(body.code);
+    if (!room) return out({ error: "no_room" });
+    const inRoom = room.players.includes(pid);
+    let patch: any = null;
+
+    if (a === "room_get") {
+      if (!inRoom) return out({ error: "not_in_room" });
+      if (room.status === "play" && room.state && DK.timeout(room.state, TURN_MS)) {
+        const st = room.state;
+        let toPay = settle(room, st);
+        patch = { state: st, status: st.over ? "done" : "play", _pay: toPay };
+      } else {
+        if (Number(body.ver) === room.ver) return out({ same: true, ver: room.ver, turnLeft: room.state && !room.state.over ? Math.max(0, Math.round((TURN_MS - (Date.now() - room.state.turnAt)) / 1000)) : 0 });
+        return out(await roomOut(room, pid));
+      }
+    } else if (a === "room_join") {
+      if (inRoom) return out(await roomOut(room, pid));
+      if (room.status !== "wait") return out({ error: "started" });
+      if (room.players.length >= room.maxp) return out({ error: "full" });
+      patch = { players: [...room.players, pid], invited: room.invited.filter((x: number) => x !== pid) };
+    } else if (a === "room_invite") {
+      if (!inRoom) return out({ error: "not_in_room" });
+      const fid = Number(body.fid);
+      const { data: ex } = await db.from("players").select("pid").eq("pid", fid).maybeSingle();
+      if (!ex) return out({ error: "no_player" });
+      if (room.players.includes(fid)) return out({ error: "already" });
+      patch = { invited: [...new Set([...room.invited, fid])] };
+    } else if (a === "room_leave") {
+      if (!inRoom) return out({ ok: true });
+      if (room.status === "play") return out({ error: "playing" });
+      const players = room.players.filter((x: number) => x !== pid);
+      if (!players.length) { await db.from("rooms").delete().eq("code", room.code); return out({ ok: true }); }
+      patch = { players, host: room.host === pid ? players[0] : room.host, status: "wait", state: null };
+    } else if (a === "room_start") {
+      if (room.host !== pid) return out({ error: "not_host" });
+      if (room.status === "play") return out({ error: "playing" });
+      if (room.players.length < 2) return out({ error: "few" });
+      const ps = await roomPlayers(room.players);
+      const need = room.stake * (room.players.length - 1);
+      const poor = ps.find((p: any) => p.balance < need);
+      if (poor) return out({ error: "poor", nick: poor.nick, need });
+      patch = { status: "play", state: DK.init(room.players.length, room.stake) };
+    } else if (a === "room_act") {
+      if (!inRoom || room.status !== "play") return out({ error: "not_playing" });
+      const st = room.state;
+      const err = DK.act(st, room.players.indexOf(pid), String(body.a), body.card);
+      if (err) return out({ error: "move", msg: err });
+      const toPay = settle(room, st);
+      patch = { state: st, status: st.over ? "done" : "play", _pay: toPay };
+    } else return out({ error: "unknown_action" }, 400);
+
+    const doPay = patch._pay; delete patch._pay;
+    const saved = await saveRoom(room, patch);
+    if (saved) { if (doPay) await pay(saved); return out(await roomOut(saved, pid)); }
+    // кто-то успел изменить комнату — пробуем ещё раз
+  }
+  return out({ error: "busy" });
 }
 
 // ---------- обработка запросов ----------
@@ -168,6 +406,8 @@ Deno.serve(async (req) => {
     }
 
     if (a === "friends") return out({ friends: await friendsOf(pid) });
+
+    if (a.startsWith("room_") || a === "invites") return await roomAction(a, body, me);
 
     if (a === "top") {
       const col = body.by === "c" ? "balance" : "wins";

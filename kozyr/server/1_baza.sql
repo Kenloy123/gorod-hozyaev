@@ -77,3 +77,22 @@ revoke execute on function add_stat(int, text, boolean) from public, anon, authe
 grant execute on function apply_delta(int, bigint, bigint) to service_role;
 grant execute on function take_bonus(int, bigint) to service_role;
 grant execute on function add_stat(int, text, boolean) to service_role;
+
+-- ===== Комнаты (игра с друзьями) =====
+create table if not exists rooms (
+  code       text primary key,
+  game       text not null default 'durak',
+  host       int  not null,
+  stake      int  not null default 100,
+  maxp       int  not null default 4,
+  players    int[] not null default '{}',
+  invited    int[] not null default '{}',
+  status     text not null default 'wait',      -- wait / play / done
+  state      jsonb,
+  ver        int  not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists rooms_invited on rooms using gin (invited);
+create index if not exists rooms_players on rooms using gin (players);
+alter table rooms enable row level security;
