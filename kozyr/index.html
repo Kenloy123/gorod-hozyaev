@@ -399,7 +399,7 @@ button{font:inherit;cursor:pointer;border:0}
 <div class="screen" id="sLead">
   <div class="top"><button class="back" onclick="toLobby()">‹</button><div><b>Топ игроков</b></div></div>
   <div class="tabs"><button id="tbW" onclick="leadTab('w')">По победам</button><button id="tbC" onclick="leadTab('c')">По фишкам</button></div>
-  <div class="note2" id="leadNote">Пока в топе ты и боты. Когда подключим сервер — здесь будут живые игроки.</div>
+  <div class="note2" id="leadNote">В топе только живые игроки. Открой игру через Telegram-бота, чтобы увидеть всех.</div>
   <div class="lb" id="lbList"></div>
 </div>
 <!-- ПРОФИЛЬ -->
@@ -625,7 +625,7 @@ function botWin(name,chips){const b=bot(name);b.w++;b.c=Math.max(1000,b.c+(chips
 const botSvg=name=>avatarSVG(name,FEM.has(name));
 const GNAME={p:'Покер',d:'Дурак',k:'Козёл',r:'Рулетка',poker:'Покер',durak:'Дурак',kozel:'Козёл',roul:'Рулетка'};
 if(!S.friends)S.friends=[];
-function leadData(){const arr=BOTN.map(n=>{const b=bot(n);return{name:n,w:b.w,c:b.c,svg:botSvg(n),fav:GNAME[b.g]}});
+function leadData(){const arr=[];
  const fav=Object.entries(S.st.by).sort((a,b)=>b[1]-a[1])[0];
  arr.push({name:myNick()+' (ты)',me:true,w:S.st.w,c:S.balance,svg:myAva(),fav:fav?GNAME[fav[0]]:'—'});return arr}
 let LT='w';
@@ -635,7 +635,7 @@ function leadTab(t){if(ONL)return onLead(t);LT=t;$('tbW').classList.toggle('on',
  $('lbList').innerHTML=arr.map((x,i)=>`<div class="lrow${x.me?' me':''}" onclick="${x.me?'':`openProf('${x.name}')`}"><div class="pl${i<3?' top':''}">${['🥇','🥈','🥉'][i]||i+1}</div><div class="av">${x.svg}</div><div class="nmx">${x.name}${S.friends.includes(x.name)?' 👥':''}<small>ID ${x.me?S.id:botId(x.name)} · любит: ${x.fav}</small></div><div class="val">${t==='w'?fmt(x.w)+' 🏆':fmt(x.c)}</div></div>`).join('')}
 function openProf(name){if(!name||name==='Ты')return;if(ONL)return botCard(name);const b=bot(name),fr=S.friends.includes(name);
  const all=leadData();const rw=all.sort((a,c)=>c.w-a.w).findIndex(x=>x.name===name)+1;close_('mFriends');
- $('profBody').innerHTML=`<div class="pbig">${botSvg(name)}</div><h3>${name}</h3><p>ID ${botId(name)} · ${fr?'👥 у тебя в друзьях':'игрок'} · место в топе: ${rw}</p>
+ $('profBody').innerHTML=`<div class="pbig">${botSvg(name)}</div><h3>${name}</h3><p>ID ${botId(name)} · 🤖 бот-соперник${fr?' · 👥 в друзьях':''}</p>
   <div class="pstats"><div><b>${fmt(b.w)}</b>побед</div><div><b>${fmt(b.c)}</b>фишек</div><div><b>${GNAME[b.g]}</b>любит</div></div>
   <div class="row" style="margin-bottom:8px"><button class="btn ${fr?'ghost':''}" onclick="toggleFriend('${name}')">${fr?'Удалить из друзей':'➕ Добавить в друзья'}</button></div>
   <div class="row"><button class="btn ghost" onclick="close_('mProf');inviteDurak('${name}')">🃏 Позвать в Дурака 1 на 1</button></div>`;
