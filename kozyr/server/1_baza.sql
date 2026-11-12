@@ -99,3 +99,6 @@ alter table rooms enable row level security;
 
 -- ===== Фото из Telegram =====
 alter table players add column if not exists photo text;
+
+-- ===== Ник выбран самим игроком =====
+alter table players add column if not exists nick_set boolean not null default false;

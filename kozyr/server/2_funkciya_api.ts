@@ -345,7 +345,7 @@ Deno.serve(async (req) => {
       if (ph && !me.photo && me.avatar !== "tg") upd.avatar = "tg";   // первый раз узнали фото — ставим его
       Object.assign(me, upd);
       await db.from("players").update(upd).eq("pid", pid);
-      return out({ me: { ...pub(me), last_bonus: me.last_bonus }, friends: await friendsOf(pid) });
+      return out({ me: { ...pub(me), last_bonus: me.last_bonus, nick_set: !!me.nick_set }, friends: await friendsOf(pid) });
     }
 
     if (a === "delta") {
@@ -372,7 +372,7 @@ Deno.serve(async (req) => {
       const nick = String(body.nick || "").trim().replace(/\s+/g, " ");
       if (!NICK_RE.test(nick)) return out({ error: "bad_nick" });
       if (!(await nickFree(nick, pid))) return out({ error: "taken" });
-      const { error } = await db.from("players").update({ nick }).eq("pid", pid);
+      const { error } = await db.from("players").update({ nick, nick_set: true }).eq("pid", pid);
       if (error) return out({ error: "taken" });
       return out({ nick });
     }

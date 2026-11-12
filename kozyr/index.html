@@ -423,8 +423,8 @@ button{font:inherit;cursor:pointer;border:0}
 <!-- ФРАЗЫ -->
 <div class="modal" id="mEmo" onclick="if(event.target===this)close_('mEmo')"><div class="sheet"><h3>Сказать за столом</h3><p>Соперники могут ответить 🙂</p><div class="emos" id="emoList"></div></div></div>
 <!-- НИК -->
-<div class="modal" id="mNick" onclick="if(event.target===this)close_('mNick')"><div class="sheet"><h3>Твой ник</h3><p>3–16 символов: буквы, цифры, _ и пробел. Его видят другие игроки.</p>
- <div class="srch"><input id="nickIn" maxlength="16" autocomplete="off"><button class="btn" onclick="saveNick()">Сохранить</button></div><p id="nickErr" style="color:#ff8a8a;min-height:16px;margin:6px 0 0"></p></div></div>
+<div class="modal" id="mNick" onclick="if(event.target===this&&!nickMust)close_('mNick')"><div class="sheet"><h3 id="nickT">Твой ник</h3><p id="nickP">3–16 символов: буквы, цифры, _ и пробел. Его видят другие игроки.</p>
+ <div class="srch"><input id="nickIn" maxlength="16" autocomplete="off" onkeydown="if(event.key==='Enter')saveNick()"><button class="btn" onclick="saveNick()">Сохранить</button></div><p id="nickErr" style="color:#ff8a8a;min-height:16px;margin:6px 0 0"></p></div></div>
 <!-- ВЫБОР РЕЖИМА -->
 <div class="modal" id="mMode" onclick="if(event.target===this)close_('mMode')"><div class="sheet"><h3 id="modeT"></h3><p id="modeP"></p><div id="modeBtns"></div></div></div>
 <!-- КОМНАТА -->
@@ -666,12 +666,14 @@ function inviteDurak(n){if(D&&!D.over){toast('Сначала доиграй те
 if(!S.id){S.id=String(100000+rnd(900000));save()}
 const botId=n=>String(100000+hash('id:'+n)%900000);
 const myNick=()=>S.nick||S.tgName||('Игрок'+S.id.slice(-4));
-function openNick(){$('nickIn').value=myNick();$('nickErr').textContent='';open_('mNick');setTimeout(()=>$('nickIn').focus(),100)}
+var nickMust=false;
+function askNick(){nickMust=true;$('nickT').textContent='👋 Придумай себе ник';$('nickP').textContent='Под этим ником тебя увидят другие игроки и смогут найти в друзьях. 3–16 символов: буквы, цифры, _ и пробел.';$('nickIn').value=S.tgName?S.tgName.replace(/[^A-Za-zА-Яа-яЁё0-9_ ]/g,'').slice(0,16):'';$('nickErr').textContent='';open_('mNick');setTimeout(()=>$('nickIn').focus(),200)}
+function openNick(){nickMust=false;$('nickT').textContent='Твой ник';$('nickIn').value=myNick();$('nickErr').textContent='';open_('mNick');setTimeout(()=>$('nickIn').focus(),100)}
 function saveNick(){const v=$('nickIn').value.trim().replace(/\s+/g,' ');
  if(!/^[A-Za-zА-Яа-яЁё0-9_ ]{3,16}$/.test(v)){$('nickErr').textContent='Ник должен быть 3–16 символов: буквы, цифры, _ и пробел';return}
  if(ONL)return onNick(v);
  if(BOTN.some(n=>n.toLowerCase()===v.toLowerCase())){$('nickErr').textContent='Этот ник уже занят';return}
- S.nick=v;save();close_('mNick');renderLobby();toast('Ник сохранён')}
+ S.nick=v;S.nickSet=1;nickMust=false;save();close_('mNick');renderLobby();toast('Ник сохранён')}
 function copyId(){try{navigator.clipboard.writeText(S.id).then(()=>toast('ID скопирован: '+S.id),()=>toast('Твой ID: '+S.id))}catch(e){toast('Твой ID: '+S.id)}}
 function findPlayers(){if(ONL)return onFind();const q=$('fq').value.trim().toLowerCase();
  if(!q){$('fFound').innerHTML='';return}
@@ -1362,6 +1364,7 @@ async function goOnline(initData){
   $('leadNote').textContent='Все игроки «Козыря». Нажми на игрока, чтобы открыть профиль.';
   $('frNote').textContent='Ищи любого игрока по ID (6 цифр) или по нику.';
   checkInvites();ping();
+  if(!me.nick_set)askNick();else S.nickSet=1;
  }catch(e){}
 }
 function queueSync(){if(!ONL)return;clearTimeout(syncT);syncT=setTimeout(doSync,700)}
@@ -1381,7 +1384,7 @@ async function onBonus(){
  else toast('Нет связи с сервером, попробуй ещё раз')}
 async function onNick(v){
  const j=await api('nick',{nick:v}).catch(()=>({error:'net'}));
- if(j.nick){S.nick=j.nick;localSave();close_('mNick');renderLobby();toast('Ник сохранён')}
+ if(j.nick){S.nick=j.nick;S.nickSet=1;nickMust=false;localSave();close_('mNick');renderLobby();toast('Ник сохранён')}
  else $('nickErr').textContent=j.error==='taken'?'Этот ник уже занят':j.error==='bad_nick'?'Ник должен быть 3–16 символов: буквы, цифры, _ и пробел':'Нет связи с сервером'}
 const pSvg=r=>r.photo?imgAva(r.photo,'p3',false):avatarSVG(r.avatar&&r.avatar!=='tg'?r.avatar:'p3',!!r.avatar_f);
 const favName=f=>f?GNAME[f]:'—';
@@ -1548,6 +1551,7 @@ function tgInit(){try{const tg=window.Telegram&&Telegram.WebApp;if(!tg||!tg.init
 window.addEventListener('load',tgInit);
 
 renderLobby();
+setTimeout(()=>{if(!ONL&&!TGI&&!S.nickSet)askNick()},2500);
 </script>
 </body>
 </html>
